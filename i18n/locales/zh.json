@@ -11,9 +11,11 @@
     "footer": {
         "source": "数据来源",
         "lastSync": "上次同步",
-        "refresh": "刷新数据",
+        "refresh": "同步数据",
         "syncing": "同步中...",
-        "autoSync": "自动同步：每6小时"
+        "autoSync": "自动同步：每2小时",
+        "syncAgo": "{time}前",
+        "syncSkipped": "刚刚同步过，已跳过"
     },
     "common": {
         "copy": "复制",

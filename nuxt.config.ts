@@ -3,7 +3,7 @@ export default defineNuxtConfig({
     compatibilityDate: "2025-07-15",
     devtools: { enabled: false },
     modules: ["@nuxtjs/supabase", "@nuxt/ui", "@nuxtjs/i18n", "@nuxtjs/color-mode"],
-    ssr: true,
+    ssr: false,
     colorMode: {
         preference: "system",
         fallback: "light",
@@ -31,9 +31,14 @@ export default defineNuxtConfig({
         },
     },
     supabase: {
-        url: process.env.SUPABASE_URL!,
-        key: process.env.SUPABASE_KEY!,
+        url: process.env.NUXT_PUBLIC_SUPABASE_URL!,
+        key: process.env.NUXT_PUBLIC_SUPABASE_KEY!,
         redirect: false,
+    },
+    nitro: {
+        scheduledTasks: {
+            "0 */2 * * *": ["sync:models"],
+        },
     },
     vite: {
         optimizeDeps: {

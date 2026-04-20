@@ -2,27 +2,29 @@
     <UFooter>
         <template #left>
             <div class="flex items-center gap-2 text-sm text-muted">
-                <span class="w-1.5 h-1.5 bg-success rounded-full" />
+                <span class="size-2 animate-pulse bg-green-500 w-1.5 h-1.5 rounded-full" />
             </div>
         </template>
 
-        <template #right> </template>
+        <template #right>
+            <UButton
+                icon="i-lucide-cloud-sync"
+                :label="syncing ? $t('footer.syncing') : $t('footer.refresh')"
+                variant="subtle"
+                size="xs"
+                :loading="syncing"
+                @click="triggerSync()"
+            />
+            <span v-if="syncMessage" class="text-xs text-muted hidden sm:inline">
+                {{ syncMessage }}
+            </span>
+            <span v-else class="text-xs text-muted hidden sm:inline">
+                {{ formattedSyncTime ? `${$t("footer.lastSync")}: ${formattedSyncTime}` : $t("footer.autoSync") }}
+            </span>
+        </template>
     </UFooter>
 </template>
 
 <script setup lang="ts">
-    const loading = ref(false);
-    const lastSynced = ref("never");
-
-    const refreshData = async () => {
-        loading.value = true;
-        try {
-            const result = await $fetch<{ data: { synced_at: string } }>("/api/sync", { method: "POST" });
-            lastSynced.value = new Date(result.data.synced_at).toLocaleString();
-        } catch (e) {
-            console.error("Sync failed", e);
-        } finally {
-            loading.value = false;
-        }
-    };
+    const { syncing, formattedSyncTime, syncMessage, triggerSync } = useAutoSync();
 </script>

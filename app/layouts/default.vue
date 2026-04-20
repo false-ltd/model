@@ -7,3 +7,9 @@
         <AppFooter />
     </div>
 </template>
+
+<script setup lang="ts">
+    const { initAutoSync, stopAutoSync } = useAutoSync();
+    onMounted(() => initAutoSync());
+    onUnmounted(() => stopAutoSync());
+</script>

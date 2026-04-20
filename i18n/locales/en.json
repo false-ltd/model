@@ -13,7 +13,9 @@
         "lastSync": "Last synced",
         "refresh": "Refresh data",
         "syncing": "Syncing...",
-        "autoSync": "Auto-sync: every 6h"
+        "autoSync": "Auto-sync: every 2h",
+        "syncAgo": "{time} ago",
+        "syncSkipped": "Synced recently, skipped"
     },
     "common": {
         "copy": "Copy",

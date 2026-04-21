@@ -53,6 +53,9 @@ jobs:
                   platforms: linux/amd64,linux/arm64
                   tags: ${{ steps.meta.outputs.tags }}
                   labels: ${{ steps.meta.outputs.labels }}
+                  build-args: |
+                      NUXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+                      NUXT_PUBLIC_SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
 
@@ -78,5 +81,5 @@ jobs:
             - name: Deploy to k3s
               run: |
                   kubectl apply -f k8s.yml
-                  kubectl rollout restart deployment/design -n ${{ env.NAMESPACE }}
-                  kubectl rollout status deployment/design -n ${{ env.NAMESPACE }} --timeout=120s
+                  kubectl rollout restart deployment/model -n ${{ env.NAMESPACE }}
+                  kubectl rollout status deployment/model -n ${{ env.NAMESPACE }} --timeout=120s

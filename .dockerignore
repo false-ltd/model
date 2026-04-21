@@ -1,3 +1,8 @@
-api.json
+.git
+.github
+.claude
+.DS_Store
+node_modules
+.nuxt
+.output
 CLAUDE.md
-schema_desc.md

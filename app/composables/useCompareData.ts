@@ -1,5 +1,11 @@
-export function useCompareData(compareModels: Ref<any[]>) {
+import type { Model } from "~/types";
+
+export function useCompareData(compareModels: Ref<Model[]>) {
     const { t } = useI18n();
+
+    const modelColors = computed(() =>
+        compareModels.value.map((_, i: number) => chartColor(i)),
+    );
 
     const identityFields = computed(() => [
         { key: "model_id", label: t("compare.modelId") },
@@ -9,13 +15,13 @@ export function useCompareData(compareModels: Ref<any[]>) {
     ]);
 
     const pricingFields = computed(() => [
-        { key: "cost_input", label: t("compare.input"), format: (v: number) => (v != null ? `$${v}` : "—") },
-        { key: "cost_output", label: t("compare.output"), format: (v: number) => (v != null ? `$${v}` : "—") },
-        { key: "cost_cache_read", label: t("compare.cacheRead"), format: (v: number) => (v != null ? `$${v}` : "—") },
-        { key: "cost_cache_write", label: t("compare.cacheWrite"), format: (v: number) => (v != null ? `$${v}` : "—") },
-        { key: "cost_reasoning", label: t("compare.reasoningCost"), format: (v: number) => (v != null ? `$${v}` : "—") },
-        { key: "cost_input_audio", label: t("compare.inputAudio"), format: (v: number) => (v != null ? `$${v}` : "—") },
-        { key: "cost_output_audio", label: t("compare.outputAudio"), format: (v: number) => (v != null ? `$${v}` : "—") },
+        { key: "cost_input", label: t("compare.input"), format: (v: number | null) => (v === 0 ? t("common.free") : v != null ? `$${v}` : "—") },
+        { key: "cost_output", label: t("compare.output"), format: (v: number | null) => (v === 0 ? t("common.free") : v != null ? `$${v}` : "—") },
+        { key: "cost_cache_read", label: t("compare.cacheRead"), format: (v: number | null) => (v === 0 ? t("common.free") : v != null ? `$${v}` : "—") },
+        { key: "cost_cache_write", label: t("compare.cacheWrite"), format: (v: number | null) => (v === 0 ? t("common.free") : v != null ? `$${v}` : "—") },
+        { key: "cost_reasoning", label: t("compare.reasoningCost"), format: (v: number | null) => (v === 0 ? t("common.free") : v != null ? `$${v}` : "—") },
+        { key: "cost_input_audio", label: t("compare.inputAudio"), format: (v: number | null) => (v === 0 ? t("common.free") : v != null ? `$${v}` : "—") },
+        { key: "cost_output_audio", label: t("compare.outputAudio"), format: (v: number | null) => (v === 0 ? t("common.free") : v != null ? `$${v}` : "—") },
     ]);
 
     const limitFields = computed(() => [
@@ -50,18 +56,18 @@ export function useCompareData(compareModels: Ref<any[]>) {
         compareModels.value.some((m) => (m.cost_input ?? 0) > 0 || (m.cost_output ?? 0) > 0),
     );
 
-    const isCheapest = (m: any, field: string) => {
+    const isCheapest = (m: Model, field: string) => {
         const val = m[field];
-        if (val == null) return false;
+        if (val == null || val === 0) return false;
         const values = compareModels.value.map((m2) => m2[field]).filter((v) => v != null && v > 0);
-        return values.length > 0 && val === Math.min(...values);
+        return values.length > 1 && val === Math.min(...values);
     };
 
-    const isBest = (m: any, field: string) => {
+    const isBest = (m: Model, field: string) => {
         const val = m[field];
         if (val == null) return false;
         const values = compareModels.value.map((m2) => m2[field]).filter((v) => v != null);
-        return values.length > 0 && val === Math.max(...values);
+        return values.length > 1 && val === Math.max(...values);
     };
 
     const pricingTabs = computed(() => [
@@ -72,32 +78,41 @@ export function useCompareData(compareModels: Ref<any[]>) {
     ]);
 
     const pricingDatasets = (tab: string) => {
-        const datasets = [];
+        const colors = modelColors.value;
+        const ds: any[] = [];
         if (tab !== "output" && tab !== "cache")
-            datasets.push({ label: t("compare.input"), data: compareModels.value.map((m) => m.cost_input || 0), backgroundColor: chartColor(0) });
+            ds.push({ label: t("compare.input"), data: compareModels.value.map((m) => m.cost_input || 0), backgroundColor: colors.map((c) => c + "cc"), borderColor: colors, borderRadius: 4 });
         if (tab !== "input" && tab !== "cache")
-            datasets.push({ label: t("compare.output"), data: compareModels.value.map((m) => m.cost_output || 0), backgroundColor: chartColor(1) });
+            ds.push({ label: t("compare.output"), data: compareModels.value.map((m) => m.cost_output || 0), backgroundColor: colors.map((c) => c + "66"), borderColor: colors, borderRadius: 4 });
         if (tab === "all" || tab === "cache") {
-            datasets.push({ label: t("compare.cacheRead"), data: compareModels.value.map((m) => m.cost_cache_read || 0), backgroundColor: chartColor(2) });
-            datasets.push({ label: t("compare.cacheWrite"), data: compareModels.value.map((m) => m.cost_cache_write || 0), backgroundColor: chartColor(4) });
+            ds.push({ label: t("compare.cacheRead"), data: compareModels.value.map((m) => m.cost_cache_read || 0), backgroundColor: colors.map((c) => c + "44"), borderRadius: 4 });
+            ds.push({ label: t("compare.cacheWrite"), data: compareModels.value.map((m) => m.cost_cache_write || 0), backgroundColor: colors.map((c) => c + "33"), borderRadius: 4 });
         }
-        return datasets;
+        return ds;
     };
 
-    const limitDatasets = computed(() => [
-        {
-            label: t("compare.context"),
-            data: compareModels.value.map((m) => m.limit_context || 0),
-            backgroundColor: chartColor(1),
-        },
-        {
-            label: t("compare.maxOutput"),
-            data: compareModels.value.map((m) => m.limit_output || 0),
-            backgroundColor: chartColor(1) + "88",
-        },
-    ]);
+    const limitDatasets = computed(() => {
+        const colors = modelColors.value;
+        return [
+            {
+                label: t("compare.context"),
+                data: compareModels.value.map((m) => m.limit_context || 0),
+                backgroundColor: colors.map((c) => c + "cc"),
+                borderColor: colors,
+                borderRadius: 4,
+            },
+            {
+                label: t("compare.maxOutput"),
+                data: compareModels.value.map((m) => m.limit_output || 0),
+                backgroundColor: colors.map((c) => c + "66"),
+                borderColor: colors,
+                borderRadius: 4,
+            },
+        ];
+    });
 
     return {
+        modelColors,
         identityFields,
         pricingFields,
         limitFields,

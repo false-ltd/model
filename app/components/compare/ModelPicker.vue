@@ -23,11 +23,7 @@
                         :disabled="modelIds.includes(r.id)"
                         class="w-full flex items-center gap-2.5 px-3 py-2 text-left cursor-pointer hover:bg-accented transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                        <img
-                            :src="`https://models.dev/logos/${r.provider_id}.svg`"
-                            class="w-6 h-6 rounded shrink-0"
-                            @error="($event.target as HTMLImageElement).style.display = 'none'"
-                        />
+                        <ProviderLogo :provider-id="r.provider_id" cls="w-6 h-6 rounded shrink-0" />
                         <div class="min-w-0 flex-1">
                             <div class="text-sm text-default truncate">{{ r.name }}</div>
                             <div class="text-xs text-muted truncate">
@@ -52,6 +48,7 @@
     }>();
 
     const { t } = useI18n();
+    const config = useRuntimeConfig();
     const { addModel } = useCompare();
 
     const query = ref("");
@@ -72,8 +69,8 @@
         timer = setTimeout(async () => {
             loading.value = true;
             try {
-                const res = await $fetch<{ data: any[] }>("/api/models", {
-                    params: { q: q.trim(), pageSize: 20 },
+                const res = await $fetch<{ data: any[] }>(`${config.public.apiBase}/api/v1/models`, {
+                    params: { q: q.trim(), page_size: 20 },
                 });
                 results.value = res.data || [];
             } catch {

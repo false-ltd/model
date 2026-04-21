@@ -19,9 +19,6 @@
         items: { limit_context: number }[];
     }>();
 
-    const canvasRef = ref<HTMLCanvasElement | null>(null);
-    let chart: Chart | null = null;
-
     const buckets = computed(() => {
         const ranges = [
             { label: "< 8K", min: 0, max: 8192 },
@@ -38,81 +35,77 @@
         }));
     });
 
-    const renderChart = () => {
-        chart?.destroy();
-        if (!canvasRef.value || !buckets.value.length) return;
+    const { canvasRef } = useChart(
+        () => {
+            if (!buckets.value.length) return null;
 
-        const mutedColor = getCSSVar("--ui-text-muted");
+            const c = chartColors();
 
-        chart = new Chart(canvasRef.value, {
-            type: "bar",
-            data: {
-                labels: buckets.value.map((b) => b.label),
-                datasets: [
-                    {
-                        data: buckets.value.map((b) => b.count),
-                        backgroundColor: buckets.value.map((b) => b.color + "cc"),
-                        borderRadius: 6,
-                        borderSkipped: false,
-                        barPercentage: 0.7,
-                    },
-                ],
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: mutedColor, font: { size: 11 } },
-                        border: { display: false },
-                    },
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: mutedColor + "20" },
-                        ticks: { color: mutedColor, font: { size: 10 } },
-                        border: { display: false },
-                    },
+            return {
+                type: "bar",
+                data: {
+                    labels: buckets.value.map((b) => b.label),
+                    datasets: [
+                        {
+                            data: buckets.value.map((b) => b.count),
+                            backgroundColor: buckets.value.map((b) => b.color + "cc"),
+                            hoverBackgroundColor: buckets.value.map((b) => b.color),
+                            borderRadius: 6,
+                            borderSkipped: false,
+                            barPercentage: 0.7,
+                        },
+                    ],
                 },
-                plugins: {
-                    tooltip: {
-                        backgroundColor: "rgba(0,0,0,0.8)",
-                        titleFont: { size: 12 },
-                        bodyFont: { size: 11 },
-                        padding: 8,
-                        cornerRadius: 6,
-                        callbacks: {
-                            label: (ctx) => ` ${ctx.parsed.y} models`,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: chartAnimation,
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: c.text, font: chartTickFont() },
+                            border: { display: false },
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: c.grid },
+                            ticks: { color: c.text, font: chartTickFont(10) },
+                            border: { display: false },
                         },
                     },
-                    legend: { display: false },
-                },
-            } satisfies ChartOptions<"bar">,
-            plugins: [
-                {
-                    id: "barCountLabels",
-                    afterDatasetsDraw(chart) {
-                        const { ctx } = chart;
-                        const meta = chart.getDatasetMeta(0);
-                        for (let i = 0; i < meta.data.length; i++) {
-                            const bar = meta.data[i]!;
-                            const val = buckets.value[i]?.count;
-                            if (val == null || val === 0) continue;
-                            ctx.save();
-                            ctx.font = "bold 10px Inter, sans-serif";
-                            ctx.fillStyle = mutedColor;
-                            ctx.textAlign = "center";
-                            ctx.textBaseline = "bottom";
-                            ctx.fillText(String(val), bar.x, bar.y - 4);
-                            ctx.restore();
-                        }
+                    plugins: {
+                        tooltip: {
+                            ...chartTooltip,
+                            callbacks: {
+                                label: (ctx) => ` ${ctx.parsed.y} models`,
+                            },
+                        },
+                        legend: { display: false },
                     },
-                },
-            ],
-        });
-    };
-
-    watch(buckets, () => nextTick(renderChart), { deep: true });
-    onMounted(renderChart);
-    onUnmounted(() => chart?.destroy());
+                } satisfies ChartOptions<"bar">,
+                plugins: [
+                    {
+                        id: "barCountLabels",
+                        afterDatasetsDraw(chart: Chart) {
+                            const { ctx } = chart;
+                            const meta = chart.getDatasetMeta(0);
+                            for (let i = 0; i < meta.data.length; i++) {
+                                const bar = meta.data[i]!;
+                                const val = buckets.value[i]?.count;
+                                if (val == null || val === 0) continue;
+                                ctx.save();
+                                ctx.font = chartFont();
+                                ctx.fillStyle = c.text;
+                                ctx.textAlign = "center";
+                                ctx.textBaseline = "bottom";
+                                ctx.fillText(String(val), bar.x, bar.y - 4);
+                                ctx.restore();
+                            }
+                        },
+                    },
+                ],
+            } as any;
+        },
+        () => buckets.value,
+    );
 </script>

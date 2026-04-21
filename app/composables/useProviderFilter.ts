@@ -1,23 +1,26 @@
-export async function useProviderFilter(selectedProviders: Ref<any[]>) {
+import type { Provider, SelectItem, ApiResponse } from "~/types";
+
+export async function useProviderFilter(selectedProviders: Ref<SelectItem[]>) {
     const { t } = useI18n()
     const route = useRoute()
+    const config = useRuntimeConfig()
 
     const { data: providers } = await useAsyncData('providers', () =>
-        $fetch<{ data: { id: string; name: string; modelCount: number }[] }>('/api/providers'),
+        $fetch<ApiResponse<Provider[]>>(`${config.public.apiBase}/api/v1/providers`),
     )
 
-    const providersList = computed(() => (providers.value as any)?.data || [])
+    const providersList = computed(() => providers.value?.data || [])
 
     const providerSearch = ref('')
 
     const topProviders = computed(() =>
-        [...providersList.value].sort((a: any, b: any) => b.modelCount - a.modelCount).slice(0, 10),
+        [...providersList.value].sort((a: Provider, b: Provider) => b.modelCount - a.modelCount).slice(0, 10),
     )
 
     const groupedProviders = computed(() => {
-        const groups: Record<string, any[]> = {}
+        const groups: Record<string, Provider[]> = {}
         for (const p of providersList.value) {
-            const letter = (p as any).name.charAt(0).toUpperCase()
+            const letter = p.name.charAt(0).toUpperCase()
             if (!groups[letter]) groups[letter] = []
             groups[letter].push(p)
         }
@@ -29,7 +32,7 @@ export async function useProviderFilter(selectedProviders: Ref<any[]>) {
     const filteredProviders = computed(() => {
         if (!providerSearch.value) return []
         const q = providerSearch.value.toLowerCase()
-        return providersList.value.filter((p: any) => p.name.toLowerCase().includes(q))
+        return providersList.value.filter((p: Provider) => p.name.toLowerCase().includes(q))
     })
 
     const providerTriggerLabel = computed(() => {
@@ -38,21 +41,22 @@ export async function useProviderFilter(selectedProviders: Ref<any[]>) {
     })
 
     const isSelected = (provider: { id: string }) =>
-        selectedProviders.value.some((sp: any) => (sp.value ?? sp) === provider.id)
+        selectedProviders.value.some((sp: SelectItem | string) => (typeof sp === 'string' ? sp : sp.value) === provider.id)
 
     const toggleProvider = (provider: { id: string; name: string }) => {
         if (isSelected(provider)) {
             selectedProviders.value = selectedProviders.value.filter(
-                (sp: any) => (sp.value ?? sp) !== provider.id,
+                (sp: SelectItem | string) => (typeof sp === 'string' ? sp : sp.value) !== provider.id,
             )
         } else {
             selectedProviders.value.push({ label: provider.name, value: provider.id })
         }
     }
 
-    const removeProvider = (sp: any) => {
+    const removeProvider = (sp: SelectItem | string) => {
+        const spValue = typeof sp === 'string' ? sp : sp.value;
         selectedProviders.value = selectedProviders.value.filter(
-            (p: any) => (p.value ?? p) !== (sp.value ?? sp),
+            (p: SelectItem | string) => (typeof p === 'string' ? p : p.value) !== spValue,
         )
     }
 
@@ -65,15 +69,14 @@ export async function useProviderFilter(selectedProviders: Ref<any[]>) {
     if (urlProviders.length && providersList.value.length) {
         selectedProviders.value = urlProviders
             .map((id) => {
-                const p = providersList.value.find((pr: any) => pr.id === id)
+                const p = providersList.value.find((pr: Provider) => pr.id === id)
                 if (!p) return null
-                return { label: (p as any).name, value: (p as any).id }
+                return { label: p.name, value: p.id } as SelectItem
             })
-            .filter(Boolean) as any[]
+            .filter((item): item is SelectItem => item !== null)
     }
 
     return {
-        providersList,
         providerSearch,
         topProviders,
         groupedProviders,

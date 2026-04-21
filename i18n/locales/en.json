@@ -27,6 +27,8 @@
         "remove": "Remove",
         "addModel": "Add model",
         "clearAll": "Clear all",
+        "more": "More",
+        "less": "Less",
         "yes": "Yes",
         "open": "Open",
         "closed": "Closed",
@@ -129,7 +131,9 @@
         "colLastUpdated": "Updated",
         "columns": "Columns",
         "selected": "Selected",
-        "filters": "Filters"
+        "filters": "Filters",
+        "ioTypes": "I/O Types",
+        "noResultsHint": "Try adjusting your filters or search query"
     },
     "detail": {
         "pricing": "Pricing",
@@ -170,7 +174,19 @@
         "maxInput": "Max Input",
         "toolCall": "Tool Call",
         "attachment": "Attachment",
-        "structuredOutput": "Structured Output"
+        "structuredOutput": "Structured Output",
+        "deprecatedWarning": "This model is deprecated and may be removed in the future.",
+        "betaWarning": "This model is in beta — behavior and pricing may change.",
+        "sameFamily": "Models in the Same Family",
+        "sdkAi": "AI SDK",
+        "sdkCurl": "cURL",
+        "sdkPython": "Python",
+        "priceAboveAvg": "above avg",
+        "priceBelowAvg": "below avg",
+        "overview": "Overview",
+        "pricingAndLimits": "Pricing & Limits",
+        "similarModels": "Similar Models",
+        "similarModelsSub": "Other models from {provider}"
     },
     "providers": {
         "title": "Providers",
@@ -182,6 +198,7 @@
     },
     "compare": {
         "title": "Compare Models",
+        "selectedModels": "Selected models",
         "modelsSelected": "models selected",
         "identity": "Identity",
         "pricing": "Pricing",
@@ -219,6 +236,9 @@
         "inputAudio": "Input Audio",
         "outputAudio": "Output Audio",
         "contextWindow": "Context Window",
-        "interleaved": "Interleaved"
+        "interleaved": "Interleaved",
+        "maxReached": "Compare limit reached",
+        "maxReachedHint": "You can compare up to 4 models at a time.",
+        "best": "Best"
     }
 }

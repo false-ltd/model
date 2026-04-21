@@ -4,12 +4,10 @@
         class="block bg-default border border-default rounded-xl p-5 hover:border-primary/50 hover:shadow-md transition-all no-underline"
     >
         <div class="flex items-center gap-2.5 mb-3.5">
-            <img
-                :src="`https://models.dev/logos/${model.provider_id}.svg`"
-                :alt="providerName"
-                class="w-9 h-9 rounded-lg p-1"
-                @error="($event.target as HTMLImageElement).style.display = 'none'"
-            />
+            <div class="w-9 h-9 rounded-lg bg-elevated flex items-center justify-center text-sm font-bold text-muted relative overflow-hidden shrink-0">
+                <span>{{ model.provider_id?.charAt(0).toUpperCase() }}</span>
+                <ProviderLogo :provider-id="model.provider_id" cls="absolute inset-0 w-full h-full object-cover rounded-lg p-1" />
+            </div>
             <div class="min-w-0 flex-1">
                 <div class="font-semibold text-sm text-default truncate">{{ model.name }}</div>
                 <div class="text-xs text-muted">{{ model.family }}</div>
@@ -50,21 +48,30 @@
 <script setup lang="ts">
     const localePath = useLocalePath();
     const { modelIds, addModel, removeModel } = useCompare();
+    const { t } = useI18n();
+    const toast = useToast();
 
     const props = defineProps<{
         model: any;
     }>();
 
     const providerName = computed(() => props.model.providers?.name || props.model.provider_id);
-    const isFree = computed(() => (props.model.cost_input ?? 0) === 0 && (props.model.cost_output ?? 0) === 0);
-    const hasVision = computed(() => props.model.modalities_input?.includes("image"));
+    const isFree = computed(() => isFreeModel(props.model));
+    const hasVision = computed(() => isVisionModel(props.model));
     const isInCompare = computed(() => modelIds.value.includes(props.model.id));
 
     const toggleCompare = () => {
         if (isInCompare.value) {
             removeModel(props.model.id);
         } else {
-            addModel(props.model.id);
+            const result = addModel(props.model.id);
+            if (!result.added && result.reason === 'max') {
+                toast.add({
+                    title: t('compare.maxReached'),
+                    description: t('compare.maxReachedHint'),
+                    color: 'warning' as const,
+                });
+            }
         }
     };
 </script>

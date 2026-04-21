@@ -51,11 +51,13 @@ export const useCompare = () => {
 
     const modelIds = computed(() => storage.value);
 
-    const addModel = (id: number) => {
-        if (storage.value.length >= 10 || storage.value.includes(id)) return;
+    const addModel = (id: number): { added: boolean; reason?: 'max' | 'duplicate' } => {
+        if (storage.value.includes(id)) return { added: false, reason: 'duplicate' };
+        if (storage.value.length >= 4) return { added: false, reason: 'max' };
         storage.value = [...storage.value, id];
         writeStorage(storage.value);
         syncToUrl(storage.value);
+        return { added: true };
     };
 
     const removeModel = (id: number) => {

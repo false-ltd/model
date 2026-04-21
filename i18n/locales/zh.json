@@ -27,6 +27,8 @@
         "remove": "移除",
         "addModel": "添加模型",
         "clearAll": "清除全部",
+        "more": "更多",
+        "less": "收起",
         "yes": "是",
         "open": "开放",
         "closed": "封闭",
@@ -129,7 +131,9 @@
         "colLastUpdated": "更新日期",
         "columns": "列",
         "selected": "已选",
-        "filters": "筛选"
+        "filters": "筛选",
+        "ioTypes": "输入输出",
+        "noResultsHint": "尝试调整筛选条件或搜索关键词"
     },
     "detail": {
         "pricing": "定价",
@@ -170,7 +174,19 @@
         "maxInput": "最大输入",
         "toolCall": "工具调用",
         "attachment": "附件",
-        "structuredOutput": "结构化输出"
+        "structuredOutput": "结构化输出",
+        "deprecatedWarning": "此模型已废弃，未来可能会被移除。",
+        "betaWarning": "此模型处于 Beta 阶段，行为和定价可能发生变化。",
+        "sameFamily": "同系列模型",
+        "sdkAi": "AI SDK",
+        "sdkCurl": "cURL",
+        "sdkPython": "Python",
+        "priceAboveAvg": "高于均价",
+        "priceBelowAvg": "低于均价",
+        "overview": "概览",
+        "pricingAndLimits": "定价与限制",
+        "similarModels": "相似模型",
+        "similarModelsSub": "来自 {provider} 的其他模型"
     },
     "providers": {
         "title": "提供商",
@@ -182,6 +198,7 @@
     },
     "compare": {
         "title": "对比模型",
+        "selectedModels": "已选模型",
         "modelsSelected": "个模型已选",
         "identity": "标识",
         "pricing": "定价",
@@ -219,6 +236,9 @@
         "inputAudio": "输入音频",
         "outputAudio": "输出音频",
         "contextWindow": "上下文窗口",
-        "interleaved": "交错推理"
+        "interleaved": "交错推理",
+        "maxReached": "已达到对比上限",
+        "maxReachedHint": "最多可同时对比 4 个模型",
+        "best": "最佳"
     }
 }

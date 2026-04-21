@@ -1,28 +1,77 @@
+import { watchDebounced } from "@vueuse/core";
+import type { Model, CatalogMeta, SelectItem } from "~/types";
+
 export function useCatalog() {
     const route = useRoute();
     const router = useRouter();
+    const config = useRuntimeConfig();
 
-    const viewMode = ref<"grid" | "table">("table");
     const sortField = ref((route.query.sort as string) || "last_updated");
     const sortOrder = ref((route.query.order as string) === "asc" ? "asc" : "desc");
-    const selectedProviders = ref<any[]>([]);
-    const selectedInputTypes = ref<any[]>([]);
-    const selectedOutputTypes = ref<any[]>([]);
+    const selectedProviders = ref<SelectItem[]>([]);
+    const selectedInputTypes = ref<SelectItem[]>([]);
+    const selectedOutputTypes = ref<SelectItem[]>([]);
     const priceRange = ref([Number(route.query.priceMin) || 0, Number(route.query.priceMax) || 100]);
+    const outputPriceRange = ref([Number(route.query.outputPriceMin) || 0, Number(route.query.outputPriceMax) || 100]);
     const searchQuery = ref((route.query.q as string) || "");
     const currentPage = ref(Number(route.query.page) || 1);
+    const pageSize = ref(Number(route.query.pageSize) || 50);
     const filters = reactive({
         freeOnly: route.query.freeOnly === "true",
         reasoning: route.query.reasoning === "true",
         vision: route.query.vision === "true",
+        toolCall: route.query.toolCall === "true",
+        attachment: route.query.attachment === "true",
+        openWeights: route.query.openWeights === "true",
+        structuredOutput: route.query.structuredOutput === "true",
+        temperature: route.query.temperature === "true",
     });
 
     const { t } = useI18n();
 
     const filterToggles = computed(() => [
-        { key: "freeOnly" as const, label: t("catalog.free"), icon: "i-lucide-badge-dollar-sign" },
-        { key: "reasoning" as const, label: t("catalog.reasoning"), icon: "i-lucide-brain" },
-        { key: "vision" as const, label: t("catalog.vision"), icon: "i-lucide-eye" },
+        {
+            key: "freeOnly" as const,
+            label: t("catalog.free"),
+            icon: "i-lucide-badge-dollar-sign",
+            color: "emerald",
+            default: true,
+        },
+        {
+            key: "reasoning" as const,
+            label: t("catalog.reasoning"),
+            icon: "i-lucide-brain",
+            color: "amber",
+            default: true,
+        },
+        {
+            key: "toolCall" as const,
+            label: t("catalog.colToolCall"),
+            icon: "i-lucide-wrench",
+            color: "blue",
+            default: true,
+        },
+        { key: "vision" as const, label: t("catalog.vision"), icon: "i-lucide-eye", color: "primary", default: true },
+        {
+            key: "openWeights" as const,
+            label: t("catalog.colWeights"),
+            icon: "i-lucide-unlock",
+            color: "violet",
+            default: true,
+        },
+        { key: "attachment" as const, label: t("catalog.colAttachment"), icon: "i-lucide-paperclip", color: "rose" },
+        {
+            key: "structuredOutput" as const,
+            label: t("catalog.colStructured"),
+            icon: "i-lucide-braces",
+            color: "purple",
+        },
+        {
+            key: "temperature" as const,
+            label: t("catalog.colTemperature"),
+            icon: "i-lucide-thermometer",
+            color: "stone",
+        },
     ]);
 
     const toggleFilter = (key: keyof typeof filters) => {
@@ -32,14 +81,15 @@ export function useCatalog() {
     };
 
     const catalogData = ref<{
-        data: any[];
-        meta: { total: number; page: number; pageSize: number; totalPages: number };
+        data: Model[];
+        meta: CatalogMeta;
     }>({
         data: [],
-        meta: { total: 0, page: 1, pageSize: 100, totalPages: 0 },
+        meta: { total: 0, page: 1, page_size: 100, total_pages: 0 },
     });
 
-    const models = computed(() => catalogData.value.data);
+    const models = computed((): Model[] => catalogData.value.data);
+    const loading = ref(false);
 
     const buildQuery = (): Record<string, string> => {
         const query: Record<string, string> = {};
@@ -48,39 +98,56 @@ export function useCatalog() {
         if (sortField.value && sortField.value !== "last_updated") query.sort = sortField.value;
         if (sortOrder.value === "asc") query.order = "asc";
         if (selectedProviders.value.length)
-            query.providers = selectedProviders.value.map((p: any) => p.value ?? p).join(",");
+            query.providers = selectedProviders.value.map((p: SelectItem | string) => typeof p === 'string' ? p : p.value).join(",");
         if (filters.reasoning) query.reasoning = "true";
         if (filters.vision) query.vision = "true";
         if (filters.freeOnly) query.freeOnly = "true";
+        if (filters.toolCall) query.toolCall = "true";
+        if (filters.attachment) query.attachment = "true";
+        if (filters.openWeights) query.openWeights = "true";
+        if (filters.structuredOutput) query.structuredOutput = "true";
+        if (filters.temperature) query.temperature = "true";
         if (selectedInputTypes.value.length)
-            query.inputTypes = selectedInputTypes.value.map((t: any) => t.value ?? t).join(",");
+            query.inputTypes = selectedInputTypes.value.map((t: SelectItem | string) => typeof t === 'string' ? t : t.value).join(",");
         if (selectedOutputTypes.value.length)
-            query.outputTypes = selectedOutputTypes.value.map((t: any) => t.value ?? t).join(",");
+            query.outputTypes = selectedOutputTypes.value.map((t: SelectItem | string) => typeof t === 'string' ? t : t.value).join(",");
         if (priceRange.value[0]! > 0) query.priceMin = String(priceRange.value[0]);
         if (priceRange.value[1]! < 100) query.priceMax = String(priceRange.value[1]);
+        if (outputPriceRange.value[0]! > 0) query.outputPriceMin = String(outputPriceRange.value[0]);
+        if (outputPriceRange.value[1]! < 100) query.outputPriceMax = String(outputPriceRange.value[1]);
+        if (pageSize.value !== 50) query.pageSize = String(pageSize.value);
         return query;
     };
 
     const buildApiParams = () => {
         const params: Record<string, string> = {
             page: String(currentPage.value),
-            pageSize: "50",
+            page_size: String(pageSize.value),
             sort: sortField.value,
         };
         if (sortOrder.value === "desc") params.order = "desc";
         if (searchQuery.value.trim()) params.q = searchQuery.value.trim();
         if (selectedProviders.value.length)
-            params.providers = selectedProviders.value.map((p: any) => p.value ?? p).join(",");
+            params.providers = selectedProviders.value.map((p: SelectItem | string) => typeof p === 'string' ? p : p.value).join(",");
         if (filters.reasoning) params.reasoning = "true";
         if (filters.vision) params.vision = "true";
-        if (filters.freeOnly) params.freeOnly = "true";
+        if (filters.freeOnly) params.free_only = "true";
+        if (filters.toolCall) params.tool_call = "true";
+        if (filters.attachment) params.attachment = "true";
+        if (filters.openWeights) params.open_weights = "true";
+        if (filters.structuredOutput) params.structured_output = "true";
+        if (filters.temperature) params.temperature = "true";
         if (selectedInputTypes.value.length)
-            params.inputTypes = selectedInputTypes.value.map((t: any) => t.value ?? t).join(",");
+            params.input_types = selectedInputTypes.value.map((t: SelectItem | string) => typeof t === 'string' ? t : t.value).join(",");
         if (selectedOutputTypes.value.length)
-            params.outputTypes = selectedOutputTypes.value.map((t: any) => t.value ?? t).join(",");
+            params.output_types = selectedOutputTypes.value.map((t: SelectItem | string) => typeof t === 'string' ? t : t.value).join(",");
         if (priceRange.value[0]! > 0 || priceRange.value[1]! < 100) {
-            params.priceMin = String(priceRange.value[0]);
-            params.priceMax = String(priceRange.value[1]);
+            params.price_min = String(priceRange.value[0]);
+            params.price_max = String(priceRange.value[1]);
+        }
+        if (outputPriceRange.value[0]! > 0 || outputPriceRange.value[1]! < 100) {
+            params.price_output_min = String(outputPriceRange.value[0]);
+            params.price_output_max = String(outputPriceRange.value[1]);
         }
         return params;
     };
@@ -101,13 +168,17 @@ export function useCatalog() {
     };
 
     const fetchCatalog = async () => {
-        const res = await $fetch("/api/models", { params: buildApiParams() });
-        catalogData.value = res as any;
+        loading.value = true;
+        try {
+            const res = await $fetch(`${config.public.apiBase}/api/v1/models`, { params: buildApiParams() });
+            catalogData.value = res as any;
+        } finally {
+            loading.value = false;
+        }
     };
 
-    // Filter/sort changes → sync to URL
     watch(
-        [selectedProviders, selectedInputTypes, selectedOutputTypes, priceRange, filters],
+        [selectedProviders, selectedInputTypes, selectedOutputTypes, filters],
         () => {
             currentPage.value = 1;
             syncToUrl();
@@ -115,17 +186,20 @@ export function useCatalog() {
         { deep: true },
     );
 
-    // Search query changes → sync to URL (debounced)
-    let searchTimer: ReturnType<typeof setTimeout> | null = null;
-    watch(searchQuery, () => {
-        if (searchTimer) clearTimeout(searchTimer);
-        searchTimer = setTimeout(() => {
+    watchDebounced(
+        [priceRange, outputPriceRange],
+        () => {
             currentPage.value = 1;
             syncToUrl();
-        }, 300);
-    });
+        },
+        { debounce: 300, deep: true },
+    );
 
-    // URL query changes → fetch data
+    watchDebounced(searchQuery, () => {
+        currentPage.value = 1;
+        syncToUrl();
+    }, { debounce: 300 });
+
     watch(
         () => route.query,
         () => {
@@ -135,10 +209,16 @@ export function useCatalog() {
     );
 
     const goToPage = (page: number) => {
-        if (page < 1 || page > catalogData.value.meta.totalPages) return;
+        if (page < 1 || page > catalogData.value.meta.total_pages) return;
         currentPage.value = page;
         syncToUrl();
         window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    const changePageSize = (size: number) => {
+        pageSize.value = size;
+        currentPage.value = 1;
+        syncToUrl();
     };
 
     const inputTypeItems = ["text", "image", "pdf", "video", "audio"].map((v) => ({
@@ -146,13 +226,12 @@ export function useCatalog() {
         value: v,
     }));
 
-    const outputTypeItems = ["text", "image", "video"].map((v) => ({
+    const outputTypeItems = ["text", "image", "video", "audio"].map((v) => ({
         label: v.charAt(0).toUpperCase() + v.slice(1),
         value: v,
     }));
 
     return {
-        viewMode,
         searchQuery,
         sortField,
         sortOrder,
@@ -160,16 +239,19 @@ export function useCatalog() {
         selectedInputTypes,
         selectedOutputTypes,
         priceRange,
+        outputPriceRange,
         currentPage,
+        pageSize,
         filters,
         filterToggles,
         toggleFilter,
         catalogData,
         models,
+        loading,
         fetchCatalog,
-        syncToUrl,
         toggleSort,
         goToPage,
+        changePageSize,
         inputTypeItems,
         outputTypeItems,
     };

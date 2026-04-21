@@ -1,6 +1,6 @@
 # Model — AI Model Catalog
 
-Browse, compare, and visualize pricing and capability data for LLMs. Built with [Nuxt 4](https://nuxt.com), [Supabase](https://supabase.com), and [Chart.js](https://www.chartjs.org).
+Browse, compare, and visualize pricing and capability data for LLMs. Built with [Nuxt 4](https://nuxt.com), [Go (Gin+Gorm)](https://gin-gonic.com), and [Chart.js](https://www.chartjs.org).
 
 Data sourced from [models.dev](https://models.dev).
 
@@ -22,7 +22,7 @@ Data sourced from [models.dev](https://models.dev).
 | Framework | Nuxt 4 (SPA mode, SSR disabled) |
 | UI | Nuxt UI v4 (Rose + Stone theme) |
 | Charts | Chart.js |
-| Database | Supabase (PostgreSQL) |
+| API | Go (Gin + Gorm) |
 | Styling | Tailwind CSS v4 |
 | Deployment | Cloudflare Pages |
 
@@ -32,6 +32,7 @@ Data sourced from [models.dev](https://models.dev).
 
 - Node.js 18+
 - pnpm
+- Go API server running (see API docs in `swagger.json`)
 
 ### Setup
 
@@ -41,14 +42,13 @@ pnpm install
 
 # Configure environment
 cp .env.example .env
-# Edit .env with your Supabase credentials
+# Edit .env with your Go API base URL
 ```
 
 ### Environment Variables
 
 ```
-NUXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NUXT_PUBLIC_SUPABASE_KEY=your-public-anon-key
+NUXT_PUBLIC_API_BASE=http://localhost:8080
 ```
 
 ### Development
@@ -65,11 +65,9 @@ pnpm preview      # Preview production build
 ```
 models.dev/api.json
        ↓
-POST /api/sync  (upsert into Supabase)
+Go API POST /api/v1/sync  (upsert into database)
        ↓
-Server API routes  (query Supabase)
-       ↓
-Client composables  (fetch from API)
+Client composables  (fetch from Go API)
        ↓
 Vue components  (render)
 ```
@@ -85,12 +83,10 @@ app/
 │   └── model/          # Model card, badge, limit bar
 ├── composables/        # State management (useCatalog, useCompare, useCompareData, etc.)
 ├── utils/format.ts     # Shared formatters and chart colors
-├── assets/css/main.css # Global styles and UTable overrides
-└── types/              # Auto-generated Supabase types
+└── assets/css/main.css # Global styles and UTable overrides
 
-server/api/             # REST endpoints (models, compare, providers, stats, sync)
-supabase/migrations/    # Database schema
 i18n/locales/           # English and Chinese translations
+swagger.json            # Go API documentation
 ```
 
 ## License

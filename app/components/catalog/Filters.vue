@@ -30,101 +30,164 @@
             <!-- Search -->
             <UInput
                 :model-value="search"
-                @update:model-value="(v: string) => $emit('update:search', v)"
+                @update:model-value="(v: string) => emit('update:search', v)"
                 :placeholder="$t('search.placeholder')"
                 icon="i-lucide-search"
-                class="w-36 sm:w-56"
-                size="sm"
+                class="w-40 sm:w-60"
             />
 
-            <!-- Desktop: View toggle + Column visibility -->
-            <template v-if="!isMobile">
-                <div class="flex bg-default border border-default rounded-lg p-0.5 shrink-0">
-                    <button
-                        @click="$emit('update:modelValue', 'grid')"
-                        class="rounded-md px-2 py-1 cursor-pointer transition-colors"
-                        :class="modelValue === 'grid' ? 'bg-primary text-white' : 'text-toned hover:text-default'"
+            <!-- Desktop: Capabilities Popover -->
+            <UPopover v-if="!isMobile">
+                <button :class="triggerClass(!!capabilityCount)">
+                    <UIcon name="i-lucide-sliders-horizontal" class="size-3.5" />
+                    <span>{{ $t('catalog.features') }}</span>
+                    <span
+                        v-if="capabilityCount"
+                        class="inline-flex items-center justify-center bg-primary text-white text-[10px] font-bold rounded-full size-4"
                     >
-                        <UIcon name="i-lucide-layout-grid" class="size-3.5" />
-                    </button>
-                    <button
-                        @click="$emit('update:modelValue', 'table')"
-                        class="rounded-md px-2 py-1 cursor-pointer transition-colors"
-                        :class="modelValue === 'table' ? 'bg-primary text-white' : 'text-toned hover:text-default'"
+                        {{ capabilityCount }}
+                    </span>
+                </button>
+                <template #content>
+                    <div class="p-2">
+                        <div class="grid grid-cols-2 gap-1">
+                            <button
+                                v-for="toggle in filterToggles"
+                                :key="toggle.key"
+                                @click="$emit('toggleFilter', toggle.key)"
+                                class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs cursor-pointer transition-colors"
+                                :class="filterBtnClass(toggle)"
+                            >
+                                <UIcon :name="toggle.icon" class="size-3.5" />
+                                <span>{{ toggle.label }}</span>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </UPopover>
+
+            <!-- Desktop: Price Popover -->
+            <UPopover v-if="!isMobile">
+                <button :class="triggerClass(priceActive)">
+                    <UIcon name="i-lucide-dollar-sign" class="size-3.5" />
+                    <span>{{ $t('catalog.price') }}</span>
+                </button>
+                <template #content>
+                    <div class="p-3 space-y-3 w-80">
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span class="text-xs text-muted">{{ $t("catalog.colInputCost") }}</span>
+                                <span class="text-xs text-toned font-mono tabular-nums">
+                                    ${{ priceRange?.[0] ?? 0 }}–${{ priceRange?.[1] ?? 100 }}
+                                </span>
+                            </div>
+                            <USlider v-model="priceRange" :min="0" :max="100" :step="0.1" color="primary" size="sm" />
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span class="text-xs text-muted">{{ $t("catalog.colOutputCost") }}</span>
+                                <span class="text-xs text-toned font-mono tabular-nums">
+                                    ${{ outputPriceRange?.[0] ?? 0 }}–${{ outputPriceRange?.[1] ?? 100 }}
+                                </span>
+                            </div>
+                            <USlider v-model="outputPriceRange" :min="0" :max="100" :step="0.1" color="primary" size="sm" />
+                        </div>
+                    </div>
+                </template>
+            </UPopover>
+
+            <!-- Desktop: I/O Types Popover -->
+            <UPopover v-if="!isMobile">
+                <button :class="triggerClass(!!ioTypeCount)">
+                    <UIcon name="i-lucide-arrow-left-right" class="size-3.5" />
+                    <span>{{ $t('catalog.ioTypes') }}</span>
+                    <span
+                        v-if="ioTypeCount"
+                        class="inline-flex items-center justify-center bg-primary text-white text-[10px] font-bold rounded-full size-4"
                     >
-                        <UIcon name="i-lucide-table" class="size-3.5" />
-                    </button>
-                </div>
-                <UDropdownMenu
-                    v-if="columnMenuItems.length"
-                    :items="[columnMenuItems]"
-                    :content="{ align: 'end', class: 'max-h-80 overflow-y-auto' }"
-                >
-                    <UButton icon="i-lucide-columns-3-cog" color="neutral" variant="outline" size="md" />
-                </UDropdownMenu>
-            </template>
+                        {{ ioTypeCount }}
+                    </span>
+                </button>
+                <template #content>
+                    <div class="p-2 w-72">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <div class="text-[10px] text-muted uppercase tracking-wider font-medium mb-1.5">{{ $t('catalog.inputType') }}</div>
+                                <div class="space-y-1">
+                                    <button
+                                        v-for="item in inputTypeItems"
+                                        :key="item.value"
+                                        @click="toggleInputType(item.value)"
+                                        class="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs cursor-pointer transition-colors w-full"
+                                        :class="isTypeSelected(selectedInputTypes, item.value) ? modalityBtnClass(item.value) : 'bg-default border border-default text-toned hover:border-accented'"
+                                    >
+                                        <UIcon :name="modalityIcon(item.value)" class="size-3.5" />
+                                        <span>{{ item.label }}</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] text-muted uppercase tracking-wider font-medium mb-1.5">{{ $t('catalog.outputType') }}</div>
+                                <div class="space-y-1">
+                                    <button
+                                        v-for="item in outputTypeItems"
+                                        :key="item.value"
+                                        @click="toggleOutputType(item.value)"
+                                        class="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs cursor-pointer transition-colors w-full"
+                                        :class="isTypeSelected(selectedOutputTypes, item.value) ? modalityBtnClass(item.value) : 'bg-default border border-default text-toned hover:border-accented'"
+                                    >
+                                        <UIcon :name="modalityIcon(item.value)" class="size-3.5" />
+                                        <span>{{ item.label }}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </UPopover>
+
+            <!-- Desktop: Provider Popover -->
+            <CatalogProviderPopover
+                v-if="!isMobile"
+                v-model:providerSearch="providerSearch"
+                :selected-providers="selectedProviders"
+                :top-providers="topProviders"
+                :grouped-providers="groupedProviders"
+                :filtered-providers="filteredProviders"
+                :provider-trigger-label="providerTriggerLabel"
+                :is-selected="isSelected"
+                @toggle-provider="$emit('toggleProvider', $event)"
+                @remove-provider="$emit('removeProvider', $event)"
+                @clear-providers="$emit('clearProviders')"
+            />
+
+            <!-- Desktop: Column visibility -->
+            <UDropdownMenu
+                v-if="!isMobile && columnMenuItems.length"
+                :items="[columnMenuItems]"
+                :content="{ align: 'end' }"
+            >
+                <UButton icon="i-lucide-columns-3-cog" color="neutral" variant="outline" size="md" />
+            </UDropdownMenu>
         </div>
     </div>
 
-    <!-- Desktop: Filter row -->
-    <div v-if="!isMobile" class="flex items-center gap-2 mb-4 flex-wrap">
-        <button
-            v-for="toggle in filterToggles"
-            :key="toggle.key"
-            @click="$emit('toggleFilter', toggle.key)"
-            class="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs cursor-pointer transition-colors shrink-0"
-            :class="
-                filters[toggle.key]
-                    ? 'bg-primary/10 border border-primary/30 text-primary'
-                    : 'bg-default border border-default text-toned hover:border-accented'
-            "
+    <!-- Active filter pills -->
+    <TransitionGroup v-if="activePills.length" name="fade" tag="div" class="flex flex-wrap items-center gap-1.5 mb-4">
+        <span
+            v-for="(pill, i) in activePills"
+            :key="i"
+            class="inline-flex items-center gap-1 rounded-full pl-2.5 pr-1.5 py-0.5 bg-primary/10 text-primary text-xs font-medium"
         >
-            <UIcon :name="toggle.icon" class="size-3.5" />
-            <span>{{ toggle.label }}</span>
+            {{ pill.label }}
+            <button @click="pill.remove" class="hover:text-error cursor-pointer transition-colors">
+                <UIcon name="i-lucide-x" class="size-3" />
+            </button>
+        </span>
+        <button v-if="activePills.length > 1" @click="clearAllFilters" class="text-xs text-muted hover:text-error cursor-pointer transition-colors">
+            {{ $t("common.clearAll") }}
         </button>
-
-        <div class="w-px h-5 bg-default shrink-0" />
-
-        <CatalogProviderPopover
-            v-model:providerSearch="providerSearch"
-            :selected-providers="selectedProviders"
-            :top-providers="topProviders"
-            :grouped-providers="groupedProviders"
-            :filtered-providers="filteredProviders"
-            :provider-trigger-label="providerTriggerLabel"
-            :is-selected="isSelected"
-            @toggle-provider="$emit('toggleProvider', $event)"
-            @remove-provider="$emit('removeProvider', $event)"
-            @clear-providers="$emit('clearProviders')"
-        />
-
-        <USelectMenu
-            v-model="selectedInputTypes"
-            multiple
-            clear
-            :items="inputTypeItems"
-            :placeholder="$t('catalog.inputType')"
-            class="w-36 shrink-0"
-            size="sm"
-        />
-        <USelectMenu
-            v-model="selectedOutputTypes"
-            multiple
-            clear
-            :items="outputTypeItems"
-            :placeholder="$t('catalog.outputType')"
-            class="w-36 shrink-0"
-            size="sm"
-        />
-
-        <div class="flex items-center gap-2 bg-default border border-default rounded-lg px-3 py-1 shrink-0">
-            <span class="text-xs text-muted whitespace-nowrap">{{ $t("catalog.priceRange") }}</span>
-            <USlider v-model="priceRange" :min="0" :max="100" :step="0.1" color="primary" class="w-24" size="sm" />
-            <span class="text-xs text-toned font-mono whitespace-nowrap tabular-nums">
-                ${{ priceRange?.[0] ?? 0 }}–${{ priceRange?.[1] ?? 100 }}
-            </span>
-        </div>
-    </div>
+    </TransitionGroup>
 
     <!-- Mobile: Expandable filter panel -->
     <Transition name="expand" @enter="onExpandEnter" @after-enter="onExpandAfterEnter" @leave="onExpandLeave">
@@ -135,11 +198,7 @@
                     :key="toggle.key"
                     @click="$emit('toggleFilter', toggle.key)"
                     class="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs cursor-pointer transition-colors"
-                    :class="
-                        filters[toggle.key]
-                            ? 'bg-primary/10 border border-primary/30 text-primary'
-                            : 'bg-default border border-default text-toned hover:border-accented'
-                    "
+                    :class="filterBtnClass(toggle)"
                 >
                     <UIcon :name="toggle.icon" class="size-3.5" />
                     <span>{{ toggle.label }}</span>
@@ -159,65 +218,79 @@
                 @clear-providers="$emit('clearProviders')"
             />
 
-            <div class="flex items-center gap-2">
-                <USelectMenu
-                    v-model="selectedInputTypes"
-                    multiple
-                    clear
-                    :items="inputTypeItems"
-                    :placeholder="$t('catalog.inputType')"
-                    class="flex-1"
-                    size="sm"
-                />
-                <USelectMenu
-                    v-model="selectedOutputTypes"
-                    multiple
-                    clear
-                    :items="outputTypeItems"
-                    :placeholder="$t('catalog.outputType')"
-                    class="flex-1"
-                    size="sm"
-                />
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <div class="text-[10px] text-muted uppercase tracking-wider font-medium mb-1.5">{{ $t('catalog.inputType') }}</div>
+                    <div class="space-y-1">
+                        <button
+                            v-for="item in inputTypeItems"
+                            :key="item.value"
+                            @click="toggleInputType(item.value)"
+                            class="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs cursor-pointer transition-colors w-full"
+                            :class="isTypeSelected(selectedInputTypes, item.value) ? modalityBtnClass(item.value) : 'bg-default border border-default text-toned hover:border-accented'"
+                        >
+                            <UIcon :name="modalityIcon(item.value)" class="size-3.5" />
+                            <span>{{ item.label }}</span>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-muted uppercase tracking-wider font-medium mb-1.5">{{ $t('catalog.outputType') }}</div>
+                    <div class="space-y-1">
+                        <button
+                            v-for="item in outputTypeItems"
+                            :key="item.value"
+                            @click="toggleOutputType(item.value)"
+                            class="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs cursor-pointer transition-colors w-full"
+                            :class="isTypeSelected(selectedOutputTypes, item.value) ? modalityBtnClass(item.value) : 'bg-default border border-default text-toned hover:border-accented'"
+                        >
+                            <UIcon :name="modalityIcon(item.value)" class="size-3.5" />
+                            <span>{{ item.label }}</span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div class="flex items-center gap-2 bg-default border border-default rounded-lg px-3 py-2">
-                <span class="text-xs text-muted whitespace-nowrap">{{ $t("catalog.priceRange") }}</span>
+                <span class="text-[10px] text-muted whitespace-nowrap">{{ $t("catalog.colInputCost") }}</span>
                 <USlider v-model="priceRange" :min="0" :max="100" :step="0.1" color="primary" class="flex-1" size="sm" />
-                <span class="text-xs text-toned font-mono whitespace-nowrap tabular-nums">
+                <span class="text-[10px] text-toned font-mono whitespace-nowrap tabular-nums">
                     ${{ priceRange?.[0] ?? 0 }}–${{ priceRange?.[1] ?? 100 }}
                 </span>
             </div>
-
-            <div class="flex items-center justify-end">
-                <div class="flex bg-default border border-default rounded-lg p-0.5">
-                    <button
-                        @click="$emit('update:modelValue', 'grid')"
-                        class="rounded-md px-2 py-1 cursor-pointer transition-colors"
-                        :class="modelValue === 'grid' ? 'bg-primary text-white' : 'text-toned hover:text-default'"
-                    >
-                        <UIcon name="i-lucide-layout-grid" class="size-3.5" />
-                    </button>
-                    <button
-                        @click="$emit('update:modelValue', 'table')"
-                        class="rounded-md px-2 py-1 cursor-pointer transition-colors"
-                        :class="modelValue === 'table' ? 'bg-primary text-white' : 'text-toned hover:text-default'"
-                    >
-                        <UIcon name="i-lucide-table" class="size-3.5" />
-                    </button>
-                </div>
+            <div class="flex items-center gap-2 bg-default border border-default rounded-lg px-3 py-2">
+                <span class="text-[10px] text-muted whitespace-nowrap">{{ $t("catalog.colOutputCost") }}</span>
+                <USlider v-model="outputPriceRange" :min="0" :max="100" :step="0.1" color="primary" class="flex-1" size="sm" />
+                <span class="text-[10px] text-toned font-mono whitespace-nowrap tabular-nums">
+                    ${{ outputPriceRange?.[0] ?? 0 }}–${{ outputPriceRange?.[1] ?? 100 }}
+                </span>
             </div>
         </div>
     </Transition>
 </template>
 
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+    transition: all 0.2s ease;
+}
+.fade-enter-from {
+    opacity: 0;
+    transform: translateY(4px);
+}
+.fade-leave-to {
+    opacity: 0;
+    transform: translateY(-4px);
+}
+</style>
+
 <script setup lang="ts">
     const props = defineProps<{
-        modelValue: "grid" | "table";
         search: string;
         total: number;
         columnMenuItems: any[];
-        filterToggles: { key: "freeOnly" | "reasoning" | "vision"; label: string; icon: string }[];
-        filters: { freeOnly: boolean; reasoning: boolean; vision: boolean };
+        filterToggles: { key: string; label: string; icon: string; color: string; default?: boolean }[];
+        filters: Record<string, boolean>;
         selectedProviders: any[];
         topProviders: any[];
         groupedProviders: { letter: string; items?: any[] }[];
@@ -232,45 +305,114 @@
     const selectedInputTypes = defineModel<any[]>("selectedInputTypes", { required: true });
     const selectedOutputTypes = defineModel<any[]>("selectedOutputTypes", { required: true });
     const priceRange = defineModel<number[]>("priceRange", { default: () => [0, 100] });
+    const outputPriceRange = defineModel<number[]>("outputPriceRange", { default: () => [0, 100] });
 
-    defineEmits<{
-        "update:modelValue": [value: "grid" | "table"];
+    const emit = defineEmits<{
         "update:search": [value: string];
-        toggleFilter: [key: "freeOnly" | "reasoning" | "vision"];
+        toggleFilter: [key: string];
         toggleProvider: [provider: any];
         removeProvider: [provider: any];
         clearProviders: [];
     }>();
 
-    // Mobile detection
-    const isMobile = ref(false);
+    const { isMobile } = useMobile();
     const filtersOpen = ref(false);
-    onMounted(() => {
-        isMobile.value = window.innerWidth < 768;
-        const mq = window.matchMedia("(min-width: 768px)");
-        const handler = (e: MediaQueryListEvent) => {
-            isMobile.value = !e.matches;
-            if (!isMobile.value) filtersOpen.value = false;
-        };
-        mq.addEventListener("change", handler);
-        onUnmounted(() => mq.removeEventListener("change", handler));
-    });
 
-    // Active filter count for mobile badge
-    const activeFilterCount = computed(() => {
-        let count = 0;
-        if (props.filters.freeOnly) count++;
-        if (props.filters.reasoning) count++;
-        if (props.filters.vision) count++;
-        if (props.selectedProviders?.length) count++;
-        if (selectedInputTypes.value?.length) count++;
-        if (selectedOutputTypes.value?.length) count++;
+    const colorMap: Record<string, { bg: string; border: string; text: string }> = {
+        emerald: { bg: "bg-emerald-500/10", border: "border-emerald-500/30", text: "text-emerald-500" },
+        amber:   { bg: "bg-amber-500/10",   border: "border-amber-500/30",   text: "text-amber-500" },
+        blue:    { bg: "bg-blue-500/10",     border: "border-blue-500/30",     text: "text-blue-500" },
+        violet:  { bg: "bg-violet-500/10",   border: "border-violet-500/30",   text: "text-violet-500" },
+        rose:    { bg: "bg-rose-500/10",      border: "border-rose-500/30",     text: "text-rose-500" },
+        purple:  { bg: "bg-purple-500/10",    border: "border-purple-500/30",   text: "text-purple-500" },
+        stone:   { bg: "bg-stone-500/10",     border: "border-stone-500/30",    text: "text-stone-500" },
+        primary: { bg: "bg-primary/10",       border: "border-primary/30",       text: "text-primary" },
+    };
+
+    const filterBtnClass = (toggle: { key: string; color: string }) => {
+        if (props.filters[toggle.key]) {
+            const c = colorMap[toggle.color] ?? colorMap.primary!;
+            return `${c.bg} border ${c.border} ${c.text}`;
+        }
+        return "bg-default border border-default text-toned hover:border-accented";
+    };
+
+    const triggerClass = (active: boolean) => {
+        const base = "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs cursor-pointer transition-colors border shrink-0";
+        if (active) return `${base} bg-primary/10 border-primary/30 text-primary`;
+        return `${base} bg-default border-default text-toned hover:border-accented`;
+    };
+
+    const modalityBtnClass = (type: string) => modalityClass(type);
+    const isTypeSelected = (list: any[], value: string) => list?.some((t: any) => (t.value ?? t) === value);
+    const toggleInputType = (value: string) => {
+        const exists = selectedInputTypes.value?.some((t: any) => (t.value ?? t) === value);
+        if (exists) {
+            selectedInputTypes.value = selectedInputTypes.value.filter((t: any) => (t.value ?? t) !== value);
+        } else {
+            selectedInputTypes.value = [...(selectedInputTypes.value || []), { label: value.charAt(0).toUpperCase() + value.slice(1), value }];
+        }
+    };
+    const toggleOutputType = (value: string) => {
+        const exists = selectedOutputTypes.value?.some((t: any) => (t.value ?? t) === value);
+        if (exists) {
+            selectedOutputTypes.value = selectedOutputTypes.value.filter((t: any) => (t.value ?? t) !== value);
+        } else {
+            selectedOutputTypes.value = [...(selectedOutputTypes.value || []), { label: value.charAt(0).toUpperCase() + value.slice(1), value }];
+        }
+    };
+
+    const capabilityCount = computed(() => Object.values(props.filters).filter(Boolean).length);
+    const priceActive = computed(() => {
         const pr = priceRange.value || [0, 100];
-        if (pr[0] !== 0 || pr[1] !== 100) count++;
-        return count;
+        const opr = outputPriceRange.value || [0, 100];
+        return pr[0] !== 0 || pr[1] !== 100 || opr[0] !== 0 || opr[1] !== 100;
+    });
+    const ioTypeCount = computed(() => (selectedInputTypes.value?.length || 0) + (selectedOutputTypes.value?.length || 0));
+
+    const activeFilterCount = computed(() => activePills.value.length);
+
+    const activePills = computed(() => {
+        const pills: { label: string; remove: () => void }[] = [];
+        if (props.search) pills.push({ label: `"${props.search}"`, remove: () => emit("update:search", "") });
+        props.filterToggles.forEach((toggle) => {
+            if ((props.filters as any)[toggle.key]) pills.push({ label: toggle.label, remove: () => emit("toggleFilter", toggle.key) });
+        });
+        props.selectedProviders?.forEach((p: any) => {
+            const name = p.label || p.name || p.value;
+            pills.push({ label: name, remove: () => emit("removeProvider", p) });
+        });
+        selectedInputTypes.value?.forEach((item: any) => {
+            pills.push({ label: item.label || item.value, remove: () => { selectedInputTypes.value = selectedInputTypes.value.filter((x: any) => (x.value ?? x) !== (item.value ?? item)); } });
+        });
+        selectedOutputTypes.value?.forEach((item: any) => {
+            pills.push({ label: item.label || item.value, remove: () => { selectedOutputTypes.value = selectedOutputTypes.value.filter((x: any) => (x.value ?? x) !== (item.value ?? item)); } });
+        });
+        const pr = priceRange.value || [0, 100];
+        if (pr[0] !== 0 || pr[1] !== 100) pills.push({ label: `In $${pr[0]}–${pr[1]}`, remove: () => { priceRange.value = [0, 100]; } });
+        const opr = outputPriceRange.value || [0, 100];
+        if (opr[0] !== 0 || opr[1] !== 100) pills.push({ label: `Out $${opr[0]}–${opr[1]}`, remove: () => { outputPriceRange.value = [0, 100]; } });
+        return pills;
     });
 
-    // Height animation helpers
+    const clearAllFilters = () => {
+        emit("update:search", "");
+        (Object.keys(props.filters) as (keyof typeof props.filters)[]).forEach((key) => {
+            if (props.filters[key]) emit("toggleFilter", key);
+        });
+        emit("clearProviders");
+        selectedInputTypes.value = [];
+        selectedOutputTypes.value = [];
+        priceRange.value = [0, 100];
+        outputPriceRange.value = [0, 100];
+    };
+
+    onMounted(() => {
+        watch(isMobile, (mobile) => {
+            if (!mobile) filtersOpen.value = false;
+        });
+    });
+
     function onExpandEnter(el: Element) {
         const htmlEl = el as HTMLElement;
         htmlEl.style.height = "0";

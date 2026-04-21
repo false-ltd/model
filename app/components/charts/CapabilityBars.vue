@@ -11,6 +11,7 @@
 <script setup lang="ts">
 import {
     Chart,
+    type Chart as ChartType,
     BarElement,
     BarController,
     CategoryScale,
@@ -27,89 +28,81 @@ const props = defineProps<{
     capabilities: { label: string; count: number; total: number; pct: number; color: string }[];
 }>();
 
-const canvasRef = ref<HTMLCanvasElement | null>(null);
-let chart: Chart | null = null;
+const { canvasRef } = useChart(
+    () => {
+        if (!props.capabilities.length) return null;
 
-const renderChart = () => {
-    chart?.destroy();
-    if (!canvasRef.value || !props.capabilities.length) return;
+        const c = chartColors();
 
-    const mutedColor = getCSSVar("--ui-text-muted");
-    const bgColor = getCSSVar("--ui-bg-elevated");
-
-    chart = new Chart(canvasRef.value, {
-        type: "bar",
-        data: {
-            labels: props.capabilities.map((c) => c.label),
-            datasets: [
-                {
-                    label: "count",
-                    data: props.capabilities.map((c) => c.pct),
-                    backgroundColor: props.capabilities.map((c) => c.color + "cc"),
-                    borderRadius: 4,
-                    borderSkipped: false,
-                    barThickness: 24,
-                },
-            ],
-        },
-        options: {
-            indexAxis: "y",
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: {
-                    display: false,
-                    max: 100,
-                },
-                y: {
-                    grid: { display: false },
-                    ticks: { color: mutedColor, font: { size: 11 } },
-                    border: { display: false },
-                },
+        return {
+            type: "bar",
+            data: {
+                labels: props.capabilities.map((cap) => cap.label),
+                datasets: [
+                    {
+                        label: "count",
+                        data: props.capabilities.map((cap) => cap.pct),
+                        backgroundColor: props.capabilities.map((cap) => cap.color + "cc"),
+                        hoverBackgroundColor: props.capabilities.map((cap) => cap.color),
+                        borderRadius: 4,
+                        borderSkipped: false,
+                        barThickness: 24,
+                    },
+                ],
             },
-            plugins: {
-                tooltip: {
-                    backgroundColor: "rgba(0,0,0,0.8)",
-                    titleFont: { size: 12 },
-                    bodyFont: { size: 11 },
-                    padding: 8,
-                    cornerRadius: 6,
-                    callbacks: {
-                        label: (ctx) => {
-                            const cap = props.capabilities[ctx.dataIndex];
-                            return cap ? ` ${cap.count} / ${cap.total} (${cap.pct}%)` : "";
-                        },
+            options: {
+                indexAxis: "y",
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: chartAnimation,
+                scales: {
+                    x: {
+                        display: false,
+                        max: 100,
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { color: c.text, font: chartTickFont() },
+                        border: { display: false },
                     },
                 },
-                legend: { display: false },
-            },
-        } satisfies ChartOptions<"bar">,
-        plugins: [
-            {
-                id: "pctLabels",
-                afterDatasetsDraw(chart) {
-                    const { ctx } = chart;
-                    const meta = chart.getDatasetMeta(0);
-                    for (let i = 0; i < meta.data.length; i++) {
-                        const bar = meta.data[i]!;
-                        const cap = props.capabilities[i];
-                        if (!cap) continue;
-                        ctx.save();
-                        ctx.font = "bold 10px Inter, sans-serif";
-                        ctx.fillStyle = cap.pct > 85 ? "#fff" : cap.color;
-                        ctx.textAlign = cap.pct > 85 ? "right" : "left";
-                        ctx.textBaseline = "middle";
-                        const x = cap.pct > 85 ? bar.x - 6 : bar.x + 6;
-                        ctx.fillText(`${cap.pct}% (${cap.count})`, x, bar.y);
-                        ctx.restore();
-                    }
+                plugins: {
+                    tooltip: {
+                        ...chartTooltip,
+                        callbacks: {
+                            label: (ctx) => {
+                                const cap = props.capabilities[ctx.dataIndex];
+                                return cap ? ` ${cap.count} / ${cap.total} (${cap.pct}%)` : "";
+                            },
+                        },
+                    },
+                    legend: { display: false },
                 },
-            },
-        ],
-    });
-};
-
-watch(() => props.capabilities, () => nextTick(renderChart), { deep: true });
-onMounted(renderChart);
-onUnmounted(() => chart?.destroy());
+            } satisfies ChartOptions<"bar">,
+            plugins: [
+                {
+                    id: "pctLabels",
+                    afterDatasetsDraw(chart: ChartType) {
+                        const { ctx } = chart;
+                        const meta = chart.getDatasetMeta(0);
+                        for (let i = 0; i < meta.data.length; i++) {
+                            const bar = meta.data[i]!;
+                            const cap = props.capabilities[i];
+                            if (!cap) continue;
+                            ctx.save();
+                            ctx.font = chartFont();
+                            ctx.fillStyle = cap.pct > 85 ? "#fff" : cap.color;
+                            ctx.textAlign = cap.pct > 85 ? "right" : "left";
+                            ctx.textBaseline = "middle";
+                            const x = cap.pct > 85 ? bar.x - 6 : bar.x + 6;
+                            ctx.fillText(`${cap.pct}% (${cap.count})`, x, bar.y);
+                            ctx.restore();
+                        }
+                    },
+                },
+            ],
+        } as any;
+    },
+    () => props.capabilities,
+);
 </script>

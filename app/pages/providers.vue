@@ -43,11 +43,7 @@
                 class="bg-default border border-default rounded-xl p-4 hover:border-accented transition-colors no-underline group"
             >
                 <div class="flex items-center gap-3 mb-3">
-                    <img
-                        :src="`https://models.dev/logos/${p.id}.svg`"
-                        class="w-9 h-9 rounded-lg p-1"
-                        @error="($event.target as HTMLImageElement).style.display = 'none'"
-                    />
+                    <ProviderLogo :provider-id="p.id" cls="w-9 h-9 rounded-lg p-1" />
                     <div class="min-w-0">
                         <div class="text-sm font-semibold text-default group-hover:text-primary transition-colors truncate">
                             {{ p.name }}
@@ -114,11 +110,7 @@
                             >
                                 <td class="px-4 py-3">
                                     <div class="flex items-center gap-2">
-                                        <img
-                                            :src="`https://models.dev/logos/${p.id}.svg`"
-                                            class="w-7 h-7 rounded-lg p-0.5 shrink-0"
-                                            @error="($event.target as HTMLImageElement).style.display = 'none'"
-                                        />
+                                        <ProviderLogo :provider-id="p.id" cls="w-7 h-7 rounded-lg p-0.5 shrink-0" />
                                         <span class="font-medium text-default truncate">{{ p.name }}</span>
                                     </div>
                                 </td>

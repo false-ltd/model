@@ -1,0 +1,273 @@
+basePath: /
+definitions:
+  github_com_false-ltd_models-api_internal_model.PageMeta:
+    properties:
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  github_com_false-ltd_models-api_internal_model.PagedResponse:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+      meta:
+        $ref: '#/definitions/github_com_false-ltd_models-api_internal_model.PageMeta'
+    type: object
+  github_com_false-ltd_models-api_internal_model.Response:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+    type: object
+host: api.model.false.ltd
+info:
+  contact: {}
+  description: AI 模型数据聚合服务，从 models.dev 同步数据并提供 RESTful API
+  title: Models API
+  version: "1.0"
+paths:
+  /api/v1/compare:
+    get:
+      description: 根据多个模型 ID 返回对比数据，保持请求顺序
+      parameters:
+      - description: 模型 ID，逗号分隔 (如 1,2,3)
+        in: query
+        name: ids
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_false-ltd_models-api_internal_model.Response'
+      summary: 模型对比
+      tags:
+      - compare
+  /api/v1/models:
+    get:
+      consumes:
+      - application/json
+      description: 分页查询 AI 模型，支持筛选、排序
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 100
+        description: 每页数量
+        in: query
+        name: page_size
+        type: integer
+      - description: 名称搜索
+        in: query
+        name: q
+        type: string
+      - default: name
+        description: 排序字段 (name/cost_input/cost_output/limit_context/release_date)
+        in: query
+        name: sort
+        type: string
+      - default: asc
+        description: 排序方向 (asc/desc)
+        in: query
+        name: order
+        type: string
+      - description: 服务商过滤，逗号分隔
+        in: query
+        name: providers
+        type: string
+      - description: 输入模态过滤，逗号分隔
+        in: query
+        name: input_types
+        type: string
+      - description: 输出模态过滤，逗号分隔
+        in: query
+        name: output_types
+        type: string
+      - description: 仅推理模型
+        in: query
+        name: reasoning
+        type: boolean
+      - description: 仅工具调用模型
+        in: query
+        name: tool_call
+        type: boolean
+      - description: 仅视觉模型
+        in: query
+        name: vision
+        type: boolean
+      - description: 仅支持附件的模型
+        in: query
+        name: attachment
+        type: boolean
+      - description: 仅免费模型
+        in: query
+        name: free_only
+        type: boolean
+      - description: 输入成本低于 $1
+        in: query
+        name: under_1
+        type: boolean
+      - description: 最低输入成本
+        in: query
+        name: price_min
+        type: number
+      - description: 最高输入成本
+        in: query
+        name: price_max
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_false-ltd_models-api_internal_model.PagedResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_false-ltd_models-api_internal_model.Response'
+      summary: 获取模型列表
+      tags:
+      - models
+  /api/v1/models/{id}:
+    get:
+      description: 根据 ID 获取单个模型详情（含服务商信息）
+      parameters:
+      - description: 模型 ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_false-ltd_models-api_internal_model.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_false-ltd_models-api_internal_model.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_false-ltd_models-api_internal_model.Response'
+      summary: 获取模型详情
+      tags:
+      - models
+  /api/v1/providers:
+    get:
+      description: 返回所有 AI 服务商及其模型数量
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_false-ltd_models-api_internal_model.Response'
+      summary: 获取服务商列表
+      tags:
+      - providers
+  /api/v1/stats:
+    get:
+      description: 返回 KPI、分层分布、能力统计、模态分布等综合统计
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_false-ltd_models-api_internal_model.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_false-ltd_models-api_internal_model.Response'
+      summary: 获取统计数据
+      tags:
+      - stats
+  /api/v1/sync:
+    post:
+      description: 从 models.dev 拉取最新数据，10 分钟内不会重复同步
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_false-ltd_models-api_internal_model.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_false-ltd_models-api_internal_model.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_false-ltd_models-api_internal_model.Response'
+      security:
+      - BearerAuth: []
+      summary: 触发数据同步
+      tags:
+      - sync
+  /api/v1/sync/status:
+    get:
+      description: 返回最近一次同步时间
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_false-ltd_models-api_internal_model.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_false-ltd_models-api_internal_model.Response'
+      summary: 查看同步状态
+      tags:
+      - sync
+  /health:
+    get:
+      description: 检查服务是否正常运行
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 健康检查
+      tags:
+      - health
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

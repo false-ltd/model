@@ -13,6 +13,7 @@ function formatRelativeTime(iso: string, t: (key: string, params?: Record<string
 
 export function useAutoSync() {
     const { t } = useI18n();
+    const config = useRuntimeConfig();
     const syncing = useState<boolean>("sync-syncing", () => false);
     const lastSyncedAt = useState<string | null>("sync-last-synced", () => null);
     const syncMessage = useState<string | null>("sync-message", () => null);
@@ -26,7 +27,7 @@ export function useAutoSync() {
         syncing.value = true;
         syncMessage.value = null;
         try {
-            const result = await $fetch<{ data: { synced_at: string; skipped?: boolean } }>("/api/sync", { method: "POST" });
+            const result = await $fetch<{ data: { synced_at: string; skipped?: boolean } }>(`${config.public.apiBase}/api/v1/sync`, { method: "POST" });
             lastSyncedAt.value = result.data.synced_at;
             if (import.meta.client) {
                 localStorage.setItem(STORAGE_KEY, result.data.synced_at);
@@ -49,7 +50,7 @@ export function useAutoSync() {
         if (cached) lastSyncedAt.value = cached;
 
         // Fetch authoritative time from server
-        $fetch<{ data: { synced_at: string | null } }>("/api/sync/status")
+        $fetch<{ data: { synced_at: string | null } }>(`${config.public.apiBase}/api/v1/sync/status`)
             .then((res) => {
                 if (res.data.synced_at) {
                     lastSyncedAt.value = res.data.synced_at;

@@ -4,6 +4,10 @@ on:
     push:
         branches: [main]
 
+concurrency:
+    group: deploy-${{ github.ref }}
+    cancel-in-progress: true
+
 env:
     REGISTRY: ghcr.io
     IMAGE_NAME: ${{ github.repository }}
@@ -15,9 +19,6 @@ jobs:
         permissions:
             contents: read
             packages: write
-        outputs:
-            image-digest: ${{ steps.build.outputs.digest }}
-
         steps:
             - name: Checkout
               uses: actions/checkout@v5
@@ -45,7 +46,6 @@ jobs:
                       type=raw,value=latest
 
             - name: Build and push
-              id: build
               uses: docker/build-push-action@v7
               with:
                   context: .
@@ -53,19 +53,17 @@ jobs:
                   platforms: linux/amd64,linux/arm64
                   tags: ${{ steps.meta.outputs.tags }}
                   labels: ${{ steps.meta.outputs.labels }}
-                  build-args: |
-                      NUXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }}
-                      NUXT_PUBLIC_SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
+                  build-args: |
+                      GIT_SHA=${{ github.sha }}
 
     deploy:
         needs: build-and-push
         runs-on: ubuntu-latest
-
         steps:
             - name: Checkout
-              uses: actions/checkout@v6
+              uses: actions/checkout@v5
 
             - name: Install kubectl
               uses: azure/setup-kubectl@v5
@@ -78,8 +76,27 @@ jobs:
                   echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > $HOME/.kube/config
                   chmod 600 $HOME/.kube/config
 
+            - name: Create secrets
+              run: |
+                  kubectl create secret generic model-secrets \
+                    --from-literal=db-user=${{ secrets.DB_USER }} \
+                    --from-literal=db-password=${{ secrets.DB_PASSWORD }} \
+                    --from-literal=db-host=${{ secrets.DB_HOST }} \
+                    --from-literal=api-keys=${{ secrets.API_KEYS }} \
+                    --from-literal=cors-origins=${{ secrets.CORS_ALLOWED_ORIGINS }} \
+                    --dry-run=client -o yaml | kubectl apply -n ${{ env.NAMESPACE }} -f -
+
+            - name: Set image tag
+              run: |
+                  sed -i "s|ghcr.io/false-ltd/model:latest|ghcr.io/false-ltd/model:sha-${GITHUB_SHA::7}|g" k8s.yml
+
             - name: Deploy to k3s
               run: |
                   kubectl apply -f k8s.yml
-                  kubectl rollout restart deployment/model -n ${{ env.NAMESPACE }}
                   kubectl rollout status deployment/model -n ${{ env.NAMESPACE }} --timeout=120s
+
+            - name: Rollback on failure
+              if: failure()
+              run: |
+                  kubectl rollout undo deployment/model -n ${{ env.NAMESPACE }}
+                  echo "Deployment failed, rolled back to previous revision"

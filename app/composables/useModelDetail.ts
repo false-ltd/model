@@ -1,20 +1,23 @@
+import type { Model, PricingField, ApiResponse } from "~/types";
+
 export async function useModelDetail() {
     const route = useRoute();
     const { t } = useI18n();
+    const config = useRuntimeConfig();
 
     const modelId = Number(route.params.id);
 
     const { data: result } = await useAsyncData(`model-${modelId}`, () =>
-        $fetch<{ data: any }>(`/api/models/${modelId}`),
+        $fetch<ApiResponse<Model>>(`${config.public.apiBase}/api/v1/models/${modelId}`),
     );
 
-    const model = computed(() => result.value?.data as any);
+    const model = computed(() => result.value?.data ?? null);
 
     if (!result.value?.data) {
         throw createError({ statusCode: 404, statusMessage: "Model not found" });
     }
 
-    const pricingFields = computed(() => {
+    const pricingFields = computed((): PricingField[] => {
         const m = model.value;
         const fields = [
             { key: "input", label: t("detail.inputPrice"), value: m.cost_input, display: m.cost_input != null ? `$${m.cost_input}` : "—" },

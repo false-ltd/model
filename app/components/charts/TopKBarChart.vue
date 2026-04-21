@@ -68,90 +68,83 @@ defineEmits<{
     navigate: [];
 }>();
 
-const canvasRef = ref<HTMLCanvasElement | null>(null);
-let chart: Chart | null = null;
+const { canvasRef } = useChart(
+    () => {
+        if (!props.items.length) return null;
 
-const renderChart = () => {
-    chart?.destroy();
-    if (!canvasRef.value || !props.items.length) return;
+        const c = chartColors();
 
-    const mutedColor = getCSSVar("--ui-text-muted");
-
-    chart = new Chart(canvasRef.value, {
-        type: "bar",
-        data: {
-            labels: props.items.map((i) => i.label),
-            datasets: [
-                {
-                    data: props.items.map((i) => i.value),
-                    backgroundColor: props.items.map((i) => i.color + "cc"),
-                    borderRadius: 4,
-                    borderSkipped: false,
-                    barThickness: 18,
+        return {
+            type: "bar",
+            data: {
+                labels: props.items.map((i) => i.label),
+                datasets: [
+                    {
+                        data: props.items.map((i) => i.value),
+                        backgroundColor: props.items.map((i) => i.color + "cc"),
+                        hoverBackgroundColor: props.items.map((i) => i.color),
+                        borderRadius: 4,
+                        borderSkipped: false,
+                        barThickness: 18,
+                    },
+                ],
+            },
+            options: {
+                indexAxis: "y",
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: chartAnimation,
+                scales: {
+                    x: {
+                        display: false,
+                        max: 100,
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: {
+                            color: c.text,
+                            font: chartTickFont(),
+                            callback: function (this: any, value: string | number) {
+                                const label = this.getLabelForValue(value) as string;
+                                return label.length > 18 ? label.slice(0, 16) + "…" : label;
+                            },
+                        },
+                        border: { display: false },
+                    },
                 },
-            ],
-        },
-        options: {
-            indexAxis: "y",
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: {
-                    display: false,
-                    max: 100,
-                },
-                y: {
-                    grid: { display: false },
-                    ticks: {
-                        color: mutedColor,
-                        font: { size: 11 },
-                        callback: function (this: any, value: number) {
-                            const label = this.getLabelForValue(value) as string;
-                            return label.length > 18 ? label.slice(0, 16) + "…" : label;
+                plugins: {
+                    tooltip: {
+                        ...chartTooltip,
+                        callbacks: {
+                            label: (ctx) => ` ${props.items[ctx.dataIndex]?.display || ctx.parsed.x}`,
                         },
                     },
-                    border: { display: false },
+                    legend: { display: false },
                 },
-            },
-            plugins: {
-                tooltip: {
-                    backgroundColor: "rgba(0,0,0,0.8)",
-                    titleFont: { size: 12 },
-                    bodyFont: { size: 11 },
-                    padding: 8,
-                    cornerRadius: 6,
-                    callbacks: {
-                        label: (ctx) => ` ${props.items[ctx.dataIndex]?.display || ctx.parsed.x}`,
+            } satisfies ChartOptions<"bar">,
+            plugins: [
+                {
+                    id: "barLabels",
+                    afterDatasetsDraw(chart: Chart) {
+                        const { ctx } = chart;
+                        const meta = chart.getDatasetMeta(0);
+                        for (let i = 0; i < meta.data.length; i++) {
+                            const bar = meta.data[i]!;
+                            const item = props.items[i];
+                            if (!item) continue;
+                            ctx.save();
+                            ctx.font = chartFont();
+                            ctx.fillStyle = item.color;
+                            ctx.textAlign = "left";
+                            ctx.textBaseline = "middle";
+                            ctx.fillText(item.display, bar.x + 6, bar.y);
+                            ctx.restore();
+                        }
                     },
                 },
-                legend: { display: false },
-            },
-        } satisfies ChartOptions<"bar">,
-        plugins: [
-            {
-                id: "barLabels",
-                afterDatasetsDraw(chart) {
-                    const { ctx } = chart;
-                    const meta = chart.getDatasetMeta(0);
-                    for (let i = 0; i < meta.data.length; i++) {
-                        const bar = meta.data[i]!;
-                        const item = props.items[i];
-                        if (!item) continue;
-                        ctx.save();
-                        ctx.font = "bold 10px Inter, sans-serif";
-                        ctx.fillStyle = item.color;
-                        ctx.textAlign = "left";
-                        ctx.textBaseline = "middle";
-                        ctx.fillText(item.display, bar.x + 6, bar.y);
-                        ctx.restore();
-                    }
-                },
-            },
-        ],
-    });
-};
-
-watch(() => props.items, () => nextTick(renderChart), { deep: true });
-onMounted(renderChart);
-onUnmounted(() => chart?.destroy());
+            ],
+        } as any;
+    },
+    () => props.items,
+);
 </script>

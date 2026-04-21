@@ -1,12 +1,12 @@
 <template>
     <div>
         <CatalogFilters
-            v-model="viewMode"
             v-model:search="searchQuery"
             v-model:providerSearch="providerSearch"
             v-model:selectedInputTypes="selectedInputTypes"
             v-model:selectedOutputTypes="selectedOutputTypes"
             v-model:priceRange="priceRange"
+            v-model:outputPriceRange="outputPriceRange"
             :total="catalogData.meta.total"
             :column-menu-items="columnMenuItems"
             :filter-toggles="filterToggles"
@@ -25,33 +25,39 @@
             @clear-providers="clearProviders"
         />
 
-        <!-- Grid view -->
-        <div v-if="viewMode === 'grid'" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-            <ModelCard v-for="model in models" :key="model.id" :model="model" />
+        <!-- Empty state -->
+        <div v-if="models.length === 0 && !loading" class="flex flex-col items-center justify-center py-20 text-center">
+            <div class="size-16 rounded-full bg-default border border-default flex items-center justify-center mb-4">
+                <UIcon name="i-lucide-search-x" class="size-6 text-muted" />
+            </div>
+            <div class="text-base font-medium text-default mb-1">{{ t("common.noResults") }}</div>
+            <div class="text-sm text-muted">{{ t("catalog.noResultsHint") }}</div>
         </div>
 
-        <!-- Table view -->
-        <CatalogTable
-            v-else
-            ref="catalogTable"
-            :models="models"
-            :sort-field="sortField"
-            :sort-order="sortOrder"
-            :total-items="catalogData.meta.total"
-            :total-pages="catalogData.meta.totalPages"
-            :current-page="currentPage"
-            :page-size="catalogData.meta.pageSize"
-            @sort="toggleSort"
-            @go-to-page="goToPage"
-        />
+        <Transition name="catalog-fade">
+            <CatalogTable
+                v-if="models.length > 0"
+                ref="catalogTable"
+                :models="models"
+                :loading="loading"
+                :sort-field="sortField"
+                :sort-order="sortOrder"
+                :total-items="catalogData.meta.total"
+                :total-pages="catalogData.meta.total_pages"
+                :current-page="currentPage"
+                :page-size="catalogData.meta.page_size"
+                @sort="toggleSort"
+                @go-to-page="goToPage"
+                @change-page-size="changePageSize"
+            />
+        </Transition>
 
-        <CatalogCompareBar />
+        <CompareFab />
     </div>
 </template>
 
 <script setup lang="ts">
     const {
-        viewMode,
         searchQuery,
         sortField,
         sortOrder,
@@ -59,18 +65,23 @@
         selectedInputTypes,
         selectedOutputTypes,
         priceRange,
+        outputPriceRange,
         filters,
         filterToggles,
         toggleFilter,
         catalogData,
         models,
+        loading,
         fetchCatalog,
         toggleSort,
         goToPage,
+        changePageSize,
         currentPage,
         inputTypeItems,
         outputTypeItems,
     } = useCatalog();
+
+    const { t } = useI18n();
 
     const {
         providerSearch,
@@ -87,5 +98,16 @@
     await fetchCatalog();
 
     const catalogTable = useTemplateRef<any>("catalogTable");
-    const columnMenuItems = computed<any>(() => catalogTable.value?.columnMenuItems || []);
+    const columnMenuItems = computed<any[]>(() => catalogTable.value?.columnMenuItems || []);
 </script>
+
+<style scoped>
+.catalog-fade-enter-active,
+.catalog-fade-leave-active {
+    transition: opacity 0.2s ease;
+}
+.catalog-fade-enter-from,
+.catalog-fade-leave-to {
+    opacity: 0;
+}
+</style>

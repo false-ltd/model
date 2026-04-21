@@ -8,7 +8,10 @@
                 :to="localePath(kpi.to)"
                 class="bg-default border border-default rounded-xl p-4 hover:border-accented transition-colors no-underline"
             >
-                <div class="text-[10px] text-muted uppercase tracking-wider mb-1">{{ kpi.label }}</div>
+                <div class="flex items-center gap-1.5 mb-2">
+                    <UIcon :name="kpi.icon" class="size-3.5 text-primary shrink-0" />
+                    <div class="text-[10px] text-muted uppercase tracking-wider">{{ kpi.label }}</div>
+                </div>
                 <div class="text-[26px] font-bold leading-none" :style="{ color: kpi.color || 'var(--ui-text)' }">
                     {{ kpi.value }}
                 </div>
@@ -67,7 +70,8 @@
 <script setup lang="ts">
     const localePath = useLocalePath();
     const { t } = useI18n();
-    const { data: result } = await useAsyncData("overview-stats", () => $fetch("/api/stats"));
+    const config = useRuntimeConfig();
+    const { data: result } = await useAsyncData("overview-stats", () => $fetch(`${config.public.apiBase}/api/v1/stats`));
 
     const stats = computed(
         () =>

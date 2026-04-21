@@ -19,7 +19,7 @@
 </template>
 
 <script setup lang="ts">
-import { Chart, ArcElement, DoughnutController, Tooltip, type ChartOptions } from "chart.js";
+import { Chart, ArcElement, DoughnutController, Tooltip, type ChartOptions, type Chart as ChartType } from "chart.js";
 
 Chart.register(ArcElement, DoughnutController, Tooltip);
 
@@ -36,74 +36,63 @@ const props = defineProps<{
     total: number;
 }>();
 
-const canvasRef = ref<HTMLCanvasElement | null>(null);
-let chart: Chart | null = null;
-
 const pct = (count: number) => (props.total > 0 ? Math.round((count / props.total) * 100) : 0);
 
+const { canvasRef } = useChart(
+    () => {
+        if (!props.segments.length) return null;
 
+        const c = chartColors();
 
-const renderChart = () => {
-    chart?.destroy();
-    if (!canvasRef.value || !props.segments.length) return;
-
-    const textColor = getCSSVar("--ui-text-default") || getCSSVar("--ui-text");
-    const mutedColor = getCSSVar("--ui-text-muted");
-
-    chart = new Chart(canvasRef.value, {
-        type: "doughnut",
-        data: {
-            labels: props.segments.map((s) => s.label),
-            datasets: [
-                {
-                    data: props.segments.map((s) => s.count),
-                    backgroundColor: props.segments.map((s) => s.color),
-                    borderWidth: 2,
-                    borderColor: getCSSVar("--ui-bg"),
-                    hoverOffset: 6,
+        return {
+            type: "doughnut",
+            data: {
+                labels: props.segments.map((s) => s.label),
+                datasets: [
+                    {
+                        data: props.segments.map((s) => s.count),
+                        backgroundColor: props.segments.map((s) => s.color),
+                        borderWidth: 2,
+                        borderColor: c.bg,
+                        hoverOffset: 6,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: chartAnimation,
+                cutout: "68%",
+                plugins: {
+                    tooltip: {
+                        ...chartTooltip,
+                        callbacks: {
+                            label: (ctx) => ` ${ctx.label}: ${ctx.parsed} (${pct(ctx.parsed as number)}%)`,
+                        },
+                    },
+                    legend: { display: false },
                 },
-            ],
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: "68%",
-            plugins: {
-                tooltip: {
-                    backgroundColor: "rgba(0,0,0,0.8)",
-                    titleFont: { size: 12 },
-                    bodyFont: { size: 11 },
-                    padding: 8,
-                    cornerRadius: 6,
-                    callbacks: {
-                        label: (ctx) => ` ${ctx.label}: ${ctx.parsed} (${pct(ctx.parsed as number)}%)`,
+            } satisfies ChartOptions<"doughnut">,
+            plugins: [
+                {
+                    id: "centerText",
+                    afterDraw(chart: ChartType) {
+                        const { ctx, width, height } = chart;
+                        ctx.save();
+                        ctx.font = chartFont("bold", 20);
+                        ctx.fillStyle = c.textDefault;
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        ctx.fillText(String(props.total), width / 2, height / 2 - 8);
+                        ctx.font = chartFont("normal", 10);
+                        ctx.fillStyle = c.text;
+                        ctx.fillText("models", width / 2, height / 2 + 10);
+                        ctx.restore();
                     },
                 },
-                legend: { display: false },
-            },
-        } satisfies ChartOptions<"doughnut">,
-        plugins: [
-            {
-                id: "centerText",
-                afterDraw(chart) {
-                    const { ctx, width, height } = chart;
-                    ctx.save();
-                    ctx.font = "bold 20px Inter, sans-serif";
-                    ctx.fillStyle = textColor;
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
-                    ctx.fillText(String(props.total), width / 2, height / 2 - 8);
-                    ctx.font = "10px Inter, sans-serif";
-                    ctx.fillStyle = mutedColor;
-                    ctx.fillText("models", width / 2, height / 2 + 10);
-                    ctx.restore();
-                },
-            },
-        ],
-    });
-};
-
-watch(() => props.segments, () => nextTick(renderChart), { deep: true });
-onMounted(renderChart);
-onUnmounted(() => chart?.destroy());
+            ],
+        } as any;
+    },
+    () => props.segments,
+);
 </script>

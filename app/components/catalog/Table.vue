@@ -9,13 +9,41 @@
             v-model:column-visibility="columnVisibility"
             :data="models"
             :columns="columns"
+            :loading="loading"
+            :ui="{
+                tbody: '[&>tr]:hover:bg-accented/50 [&>tr]:transition-colors [&>tr]:cursor-pointer',
+            }"
             class="flex-1 max-h-[calc(100vh)]"
-        />
+            @row-click="(row: any) => handleRowClick(row)"
+        >
+            <template #loading>
+                <div v-for="i in 8" :key="i" class="flex items-center gap-4 px-4 py-2.5">
+                    <USkeleton class="size-5 rounded" />
+                    <USkeleton class="h-4 w-40 rounded" />
+                    <USkeleton class="h-4 w-16 rounded ml-auto" />
+                    <USkeleton class="h-4 w-14 rounded" />
+                    <USkeleton class="h-4 w-14 rounded" />
+                </div>
+            </template>
+        </UTable>
         </div>
 
         <!-- Pagination -->
         <div v-if="totalPages > 1" class="flex items-center justify-between px-4 py-2.5 border-t border-default">
-            <div class="text-xs text-muted">{{ rangeStart }}-{{ rangeEnd }} {{ t("common.of") }} {{ totalItems }}</div>
+            <div class="flex items-center gap-2">
+                <div class="text-xs text-muted">{{ rangeStart }}-{{ rangeEnd }} {{ t("common.of") }} {{ totalItems }}</div>
+                <div class="flex items-center gap-0.5 bg-default border border-default rounded-md p-0.5">
+                    <button
+                        v-for="size in [20, 50, 100]"
+                        :key="size"
+                        @click="emit('changePageSize', size)"
+                        class="rounded px-1.5 py-0.5 text-[11px] cursor-pointer transition-colors"
+                        :class="pageSize === size ? 'bg-primary text-white' : 'text-muted hover:text-default'"
+                    >
+                        {{ size }}
+                    </button>
+                </div>
+            </div>
             <UPagination
                 :page="currentPage"
                 :items-per-page="pageSize"
@@ -29,6 +57,8 @@
 <script setup lang="ts">
     import { h, resolveComponent } from "vue";
     import type { TableColumn } from "@nuxt/ui";
+    import { inlineBadgeClass } from "~/utils/badge";
+    import type { Model } from "~/types";
 
     const UCheckbox = resolveComponent("UCheckbox");
     const UButton = resolveComponent("UButton");
@@ -37,7 +67,8 @@
     const NuxtLinkComp = resolveComponent("NuxtLink");
 
     const props = defineProps<{
-        models: any[];
+        models: Model[];
+        loading: boolean;
         sortField: string;
         sortOrder: string;
         totalItems: number;
@@ -49,11 +80,13 @@
     const emit = defineEmits<{
         sort: [field: string];
         goToPage: [page: number];
+        changePageSize: [size: number];
     }>();
 
     const localePath = useLocalePath();
     const { modelIds, addModel, removeModel } = useCompare();
     const { t } = useI18n();
+    const toast = useToast();
     const table = useTemplateRef<any>("table");
 
     const copiedId = ref("");
@@ -67,8 +100,21 @@
         }, 1500);
     };
 
-    // Column visibility labels
-    const colLabels: Record<string, string> = {
+    const handleRowClick = (row: any) => {
+        if (row.original?.id) {
+            navigateTo(localePath(`/model/${row.original.id}`));
+        }
+    };
+
+    const showMaxToast = () => {
+        toast.add({
+            title: t('compare.maxReached'),
+            description: t('compare.maxReachedHint'),
+            color: 'warning' as const,
+        });
+    };
+
+    const colLabels = computed<Record<string, string>>(() => ({
         name: t("catalog.colProviderModel"),
         family: t("catalog.colFamily"),
         provider_id: t("catalog.colProviderId"),
@@ -83,18 +129,12 @@
         limit_context: t("catalog.colContext"),
         limit_input: t("catalog.colInputLimit"),
         limit_output: t("catalog.colMaxOutput"),
-        tool_call: t("catalog.colToolCall"),
-        reasoning: t("catalog.colReasoning"),
         modalities_input: t("catalog.colInputMod"),
         modalities_output: t("catalog.colOutputMod"),
-        open_weights: t("catalog.colWeights"),
-        structured_output: t("catalog.colStructured"),
-        attachment: t("catalog.colAttachment"),
-        temperature: t("catalog.colTemperature"),
         knowledge: t("catalog.colKnowledge"),
         release_date: t("catalog.colReleased"),
         last_updated: t("catalog.colLastUpdated"),
-    };
+    }));
 
     // Sortable header renderer
     function sortHeader(column: { id: string }, label: string) {
@@ -140,15 +180,20 @@
             id: "select",
             header: () => h("span", { class: "text-muted" }, "Select"),
             cell: ({ row }: { row: any }) =>
-                h(UCheckbox, {
-                    modelValue: modelIds.value.includes(row.original.id),
-                    "onUpdate:modelValue": () => {
-                        modelIds.value.includes(row.original.id)
-                            ? removeModel(row.original.id)
-                            : addModel(row.original.id);
-                    },
-                    "aria-label": "Select row",
-                }),
+                h("div", { onClick: (e: Event) => e.stopPropagation() }, [
+                    h(UCheckbox, {
+                        modelValue: modelIds.value.includes(row.original.id),
+                        "onUpdate:modelValue": () => {
+                            modelIds.value.includes(row.original.id)
+                                ? removeModel(row.original.id)
+                                : (() => {
+                                    const result = addModel(row.original.id);
+                                    if (!result.added && result.reason === 'max') showMaxToast();
+                                })();
+                        },
+                        "aria-label": "Select row",
+                    }),
+                ]),
             size: 50,
             enableHiding: false,
         },
@@ -158,19 +203,24 @@
             header: ({ column }: { column: { id: string } }) => sortHeader(column, t("catalog.colProviderModel")),
             cell: ({ row }: { row: any }) => {
                 const m = row.original;
-                const children: any[] = [];
+                const rowChildren: any[] = [];
                 if (!isMobile.value) {
-                    children.push(
-                        h("img", {
-                            src: `https://models.dev/logos/${m.provider_id}.svg`,
-                            class: "w-6 h-6 rounded shrink-0",
-                            onError: (e: Event) => {
-                                (e.target as HTMLImageElement).style.display = "none";
-                            },
-                        }),
+                    rowChildren.push(
+                        h("div", {
+                            class: "w-6 h-6 rounded shrink-0 bg-elevated flex items-center justify-center text-[9px] font-bold text-muted relative overflow-hidden",
+                        }, [
+                            h("span", m.provider_id?.charAt(0).toUpperCase()),
+                            h("img", {
+                                src: `https://models.dev/logos/${m.provider_id}.svg`,
+                                class: "absolute inset-0 w-full h-full object-cover rounded",
+                                onError: (e: Event) => {
+                                    (e.target as HTMLImageElement).style.display = "none";
+                                },
+                            }) as any,
+                        ]),
                     );
                 }
-                children.push(
+                const textCol: any[] = [
                     h(
                         NuxtLinkComp,
                         {
@@ -179,10 +229,22 @@
                         },
                         () => m.name,
                     ),
-                );
-                return h("div", { class: "flex items-center gap-2 min-w-0" }, children);
+                ];
+                const badges: any[] = [];
+                if (m.cost_input === 0) badges.push(h("span", { class: inlineBadgeClass("free") }, t("common.free")));
+                if (m.reasoning) badges.push(h("span", { class: inlineBadgeClass("reasoning") }, t("catalog.reasoning")));
+                if (m.tool_call) badges.push(h("span", { class: inlineBadgeClass("tool_call") }, t("catalog.colToolCall")));
+                if (m.open_weights) badges.push(h("span", { class: inlineBadgeClass("open_weights") }, t("common.open")));
+                if (m.structured_output) badges.push(h("span", { class: inlineBadgeClass("structured_output") }, t("catalog.colStructured")));
+                if (m.attachment) badges.push(h("span", { class: inlineBadgeClass("attachment") }, t("catalog.colAttachment")));
+                if (m.temperature) badges.push(h("span", { class: inlineBadgeClass("temperature") }, t("catalog.colTemperature")));
+                if (badges.length) {
+                    textCol.push(h("div", { class: "flex items-center gap-1 mt-0.5 flex-wrap" }, badges));
+                }
+                rowChildren.push(h("div", { class: "flex flex-col min-w-0" }, textCol));
+                return h("div", { class: "flex items-center gap-2 min-w-0", onClick: (e: Event) => e.stopPropagation() }, rowChildren);
             },
-            size: isMobile.value ? 130 : 240,
+            size: isMobile.value ? 130 : 260,
             enableHiding: false,
         },
         {
@@ -299,26 +361,6 @@
             size: 100,
         },
         {
-            id: "tool_call",
-            accessorKey: "tool_call",
-            header: ({ column }: { column: { id: string } }) => sortHeader(column, t("catalog.colToolCall")),
-            cell: ({ row }: { row: any }) => {
-                const val = row.original.tool_call;
-                return h("span", { class: val ? "text-success" : "text-muted" }, val ? t("common.yes") : "\u2014");
-            },
-            size: 80,
-        },
-        {
-            id: "reasoning",
-            accessorKey: "reasoning",
-            header: ({ column }: { column: { id: string } }) => sortHeader(column, t("catalog.colReasoning")),
-            cell: ({ row }: { row: any }) => {
-                const val = row.original.reasoning;
-                return h("span", { class: val ? "text-warning" : "text-muted" }, val ? t("common.yes") : "\u2014");
-            },
-            size: 80,
-        },
-        {
             id: "modalities_input",
             accessorKey: "modalities_input",
             header: () => h("span", { class: "text-muted" }, t("catalog.colInputMod")),
@@ -333,7 +375,7 @@
                             h(
                                 "span",
                                 {
-                                    class: `inline-flex items-center justify-center size-6 rounded-md ${modalityInputClass(mod)}`,
+                                    class: `inline-flex items-center justify-center size-6 rounded-md border ${modalityClass(mod)}`,
                                 },
                                 h(UIcon, { name: modalityIcon(mod), class: "size-3.5" }),
                             ),
@@ -359,7 +401,7 @@
                             h(
                                 "span",
                                 {
-                                    class: `inline-flex items-center justify-center size-6 rounded-md ${modalityOutputClass()}`,
+                                    class: `inline-flex items-center justify-center size-6 rounded-md border ${modalityClass(mod)}`,
                                 },
                                 h(UIcon, { name: modalityIcon(mod), class: "size-3.5" }),
                             ),
@@ -367,50 +409,6 @@
                     ),
                 );
             },
-        },
-        {
-            id: "open_weights",
-            accessorKey: "open_weights",
-            header: ({ column }: { column: { id: string } }) => sortHeader(column, t("catalog.colWeights")),
-            cell: ({ row }: { row: any }) => {
-                const val = row.original.open_weights;
-                return h(
-                    "span",
-                    { class: val ? "text-success" : "text-muted" },
-                    val ? t("common.open") : t("common.closed"),
-                );
-            },
-            size: 80,
-        },
-        {
-            id: "structured_output",
-            accessorKey: "structured_output",
-            header: ({ column }: { column: { id: string } }) => sortHeader(column, t("catalog.colStructured")),
-            cell: ({ row }: { row: any }) => {
-                const val = row.original.structured_output;
-                return h("span", { class: val ? "text-success" : "text-muted" }, val ? t("common.yes") : "\u2014");
-            },
-            size: 80,
-        },
-        {
-            id: "attachment",
-            accessorKey: "attachment",
-            header: ({ column }: { column: { id: string } }) => sortHeader(column, t("catalog.colAttachment")),
-            cell: ({ row }: { row: any }) => {
-                const val = row.original.attachment;
-                return h("span", { class: val ? "text-primary" : "text-muted" }, val ? t("common.yes") : "\u2014");
-            },
-            size: 80,
-        },
-        {
-            id: "temperature",
-            accessorKey: "temperature",
-            header: ({ column }: { column: { id: string } }) => sortHeader(column, t("catalog.colTemperature")),
-            cell: ({ row }: { row: any }) => {
-                const val = row.original.temperature;
-                return h("span", { class: val ? "text-success" : "text-muted" }, val ? t("common.yes") : "\u2014");
-            },
-            size: 80,
         },
         {
             id: "knowledge",
@@ -435,44 +433,36 @@
         },
     ]);
 
-    // Column pinning — mobile only pins name
-    const columnPinning = ref({ left: ["select", "name"] });
+    const columnPinning = ref<{ left: string[] }>({ left: ["select", "name"] });
 
-    // Column visibility — hide secondary columns on mobile
     const mobileHiddenColumns = [
         "select", "family", "provider_id", "cost_reasoning", "cost_cache_read", "cost_cache_write",
-        "cost_input_audio", "cost_output_audio", "limit_input", "temperature", "knowledge", "last_updated",
+        "cost_input_audio", "cost_output_audio", "limit_input", "knowledge", "last_updated",
     ];
-    const isMobile = ref(false);
+    const { isMobile } = useMobile();
     const columnVisibility = ref<Record<string, boolean>>({});
     onMounted(() => {
-        if (window.innerWidth < 768) {
-            isMobile.value = true;
+        if (isMobile.value) {
             columnVisibility.value = Object.fromEntries(mobileHiddenColumns.map((col) => [col, false]));
-            columnPinning.value = { left: ["name"] };
+            columnPinning.value = { left: [] };
         }
-        const mq = window.matchMedia("(min-width: 768px)");
-        const handler = (e: MediaQueryListEvent) => {
-            isMobile.value = !e.matches;
-            if (isMobile.value) {
+        watch(isMobile, (mobile) => {
+            if (mobile) {
                 columnVisibility.value = Object.fromEntries(mobileHiddenColumns.map((col) => [col, false]));
-                columnPinning.value = { left: ["name"] };
+                columnPinning.value = { left: [] };
             } else {
                 columnPinning.value = { left: ["select", "name"] };
             }
-        };
-        mq.addEventListener("change", handler);
-        onUnmounted(() => mq.removeEventListener("change", handler));
+        });
     });
 
-    // Column visibility dropdown items
     const columnMenuItems = computed(() => {
         const api: any = table.value?.tableApi;
         if (!api) return [];
         return (api.getAllColumns() as any[])
             .filter((col: any) => col.getCanHide())
             .map((col: any) => ({
-                label: colLabels[col.id as string] || col.id,
+                label: colLabels.value[col.id as string] || col.id,
                 type: "checkbox" as const,
                 checked: col.getIsVisible() as boolean,
                 onUpdateChecked(checked: boolean) {
@@ -484,7 +474,6 @@
             }));
     });
 
-    // Pagination range
     const rangeStart = computed(() => (props.currentPage - 1) * props.pageSize + 1);
     const rangeEnd = computed(() => Math.min(props.currentPage * props.pageSize, props.totalItems));
 

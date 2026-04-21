@@ -1,8 +1,15 @@
 <template>
     <UPopover modal>
-        <UButton label="Open" color="neutral" variant="subtle">
-            <UIcon name="i-lucide-building-2" class="size-3.5" /> {{ providerTriggerLabel }}
-        </UButton>
+        <button :class="triggerBtnClass">
+            <UIcon name="i-lucide-building-2" class="size-3.5" />
+            <span>{{ providerTriggerLabel }}</span>
+            <span
+                v-if="selectedProviders.length"
+                class="inline-flex items-center justify-center bg-primary text-white text-[10px] font-bold rounded-full size-4"
+            >
+                {{ selectedProviders.length }}
+            </span>
+        </button>
 
         <template #content>
             <div class="w-96 max-h-105 overflow-y-auto bg-default border border-default rounded-xl shadow-lg">
@@ -37,11 +44,7 @@
                                 @click="$emit('removeProvider', sp)"
                                 class="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors text-left bg-primary/10 hover:bg-primary/20"
                             >
-                                <img
-                                    :src="`https://models.dev/logos/${sp.value}.svg`"
-                                    class="w-5 h-5 rounded shrink-0"
-                                    @error="($event.target as HTMLImageElement).style.display = 'none'"
-                                />
+                                <ProviderLogo :provider-id="sp.value" cls="w-5 h-5 rounded shrink-0" />
                                 <span class="flex-1 text-sm truncate text-primary font-medium">
                                     {{ sp.label }}
                                 </span>
@@ -66,11 +69,7 @@
                                 class="flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors text-left"
                                 :class="isSelected(p) ? 'bg-primary/10' : 'hover:bg-accented'"
                             >
-                                <img
-                                    :src="`https://models.dev/logos/${(p as any).id}.svg`"
-                                    class="w-5 h-5 rounded shrink-0"
-                                    @error="($event.target as HTMLImageElement).style.display = 'none'"
-                                />
+                                <ProviderLogo :provider-id="(p as any).id" cls="w-5 h-5 rounded shrink-0" />
                                 <span
                                     class="flex-1 text-sm truncate"
                                     :class="isSelected(p) ? 'text-primary font-medium' : 'text-toned'"
@@ -101,11 +100,7 @@
                                 class="flex items-center gap-2 w-full px-2 py-1.5 rounded-md cursor-pointer transition-colors text-left"
                                 :class="isSelected(p) ? 'bg-primary/10' : 'hover:bg-accented'"
                             >
-                                <img
-                                    :src="`https://models.dev/logos/${(p as any).id}.svg`"
-                                    class="w-4 h-4 rounded shrink-0"
-                                    @error="($event.target as HTMLImageElement).style.display = 'none'"
-                                />
+                                <ProviderLogo :provider-id="(p as any).id" cls="w-4 h-4 rounded shrink-0" />
                                 <span
                                     class="flex-1 text-sm truncate"
                                     :class="isSelected(p) ? 'text-primary font-medium' : 'text-toned'"
@@ -129,11 +124,7 @@
                             class="flex items-center gap-2 w-full px-2 py-1.5 rounded-md cursor-pointer transition-colors text-left"
                             :class="isSelected(p) ? 'bg-primary/10' : 'hover:bg-accented'"
                         >
-                            <img
-                                :src="`https://models.dev/logos/${(p as any).id}.svg`"
-                                class="w-5 h-5 rounded shrink-0"
-                                @error="($event.target as HTMLImageElement).style.display = 'none'"
-                            />
+                            <ProviderLogo :provider-id="(p as any).id" cls="w-5 h-5 rounded shrink-0" />
                             <span
                                 class="flex-1 text-sm truncate"
                                 :class="isSelected(p) ? 'text-primary font-medium' : 'text-toned'"
@@ -154,7 +145,7 @@
 </template>
 
 <script setup lang="ts">
-    defineProps<{
+    const props = defineProps<{
         selectedProviders: any[]
         topProviders: any[]
         groupedProviders: { letter: string; items?: any[] }[]
@@ -164,6 +155,12 @@
     }>()
 
     const providerSearch = defineModel<string>('providerSearch', { required: true })
+
+    const triggerBtnClass = computed(() => {
+        const base = 'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs cursor-pointer transition-colors border shrink-0';
+        if (props.selectedProviders.length > 0) return `${base} bg-primary/10 border-primary/30 text-primary`;
+        return `${base} bg-default border-default text-toned hover:border-accented`;
+    })
 
     defineEmits<{
         toggleProvider: [provider: any]

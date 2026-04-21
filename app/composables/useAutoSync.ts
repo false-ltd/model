@@ -1,4 +1,3 @@
-const SYNC_INTERVAL_MS = 2 * 60 * 60 * 1000;
 const STORAGE_KEY = "sync-last-synced-at";
 
 function formatRelativeTime(iso: string, t: (key: string, params?: Record<string, string>) => string): string {
@@ -17,9 +16,6 @@ export function useAutoSync() {
     const syncing = useState<boolean>("sync-syncing", () => false);
     const lastSyncedAt = useState<string | null>("sync-last-synced", () => null);
     const syncMessage = useState<string | null>("sync-message", () => null);
-
-    let timerId: ReturnType<typeof setInterval> | null = null;
-    let initialized = false;
 
     const formattedSyncTime = computed(() => {
         if (!lastSyncedAt.value) return null;
@@ -45,11 +41,10 @@ export function useAutoSync() {
         }
     };
 
-    const initAutoSync = () => {
-        if (!import.meta.client || initialized) return;
-        initialized = true;
+    const initSync = () => {
+        if (!import.meta.client) return;
 
-        // Restore from localStorage to avoid flash
+        // Restore from localStorage
         const cached = localStorage.getItem(STORAGE_KEY);
         if (cached) lastSyncedAt.value = cached;
 
@@ -62,19 +57,7 @@ export function useAutoSync() {
                 }
             })
             .catch(() => {});
-
-        // Start periodic sync
-        timerId = setInterval(() => {
-            triggerSync();
-        }, SYNC_INTERVAL_MS);
     };
 
-    const stopAutoSync = () => {
-        if (timerId) {
-            clearInterval(timerId);
-            timerId = null;
-        }
-    };
-
-    return { syncing, lastSyncedAt, formattedSyncTime, syncMessage, triggerSync, initAutoSync, stopAutoSync };
+    return { syncing, lastSyncedAt, formattedSyncTime, syncMessage, triggerSync, initSync };
 }

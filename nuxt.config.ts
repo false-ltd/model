@@ -35,11 +35,7 @@ export default defineNuxtConfig({
         key: process.env.NUXT_PUBLIC_SUPABASE_KEY!,
         redirect: false,
     },
-    nitro: {
-        scheduledTasks: {
-            "0 */2 * * *": ["sync:models"],
-        },
-    },
+    nitro: {},
     vite: {
         optimizeDeps: {
             include: ["chart.js", "vue-chartjs"],

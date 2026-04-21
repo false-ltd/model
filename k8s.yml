@@ -61,6 +61,6 @@ spec:
                     pathType: Prefix
                     backend:
                         service:
-                            name: model-tls
+                            name: model
                             port:
                                 number: 80

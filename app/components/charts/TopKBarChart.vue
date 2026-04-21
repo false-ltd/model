@@ -75,8 +75,7 @@ const renderChart = () => {
     chart?.destroy();
     if (!canvasRef.value || !props.items.length) return;
 
-    const mutedColor =
-        getComputedStyle(document.documentElement).getPropertyValue("--ui-text-muted").trim() || "#a8a29e";
+    const mutedColor = getCSSVar("--ui-text-muted");
 
     chart = new Chart(canvasRef.value, {
         type: "bar",

@@ -34,10 +34,8 @@ const renderChart = () => {
     chart?.destroy();
     if (!canvasRef.value || !props.capabilities.length) return;
 
-    const mutedColor =
-        getComputedStyle(document.documentElement).getPropertyValue("--ui-text-muted").trim() || "#a8a29e";
-    const bgColor =
-        getComputedStyle(document.documentElement).getPropertyValue("--ui-bg-elevated").trim() || "#f5f5f4";
+    const mutedColor = getCSSVar("--ui-text-muted");
+    const bgColor = getCSSVar("--ui-bg-elevated");
 
     chart = new Chart(canvasRef.value, {
         type: "bar",

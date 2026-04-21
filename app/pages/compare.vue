@@ -28,7 +28,56 @@
             </div>
         </div>
 
-        <!-- Comparison grid -->
+        <!-- Mobile: card view -->
+        <div v-else-if="isMobile" class="space-y-3">
+            <div
+                v-for="m in compareModels"
+                :key="m.id"
+                class="bg-default border border-default rounded-xl p-4"
+            >
+                <div class="flex items-center gap-3 mb-3">
+                    <img
+                        :src="`https://models.dev/logos/${m.provider_id}.svg`"
+                        class="w-9 h-9 rounded-lg shrink-0"
+                        @error="($event.target as HTMLImageElement).style.display = 'none'"
+                    />
+                    <div class="min-w-0">
+                        <NuxtLink
+                            :to="localePath(`/model/${m.id}`)"
+                            class="font-semibold text-sm text-default hover:text-primary transition-colors no-underline"
+                        >{{ m.name }}</NuxtLink>
+                        <div class="text-xs text-muted">{{ m.family }}</div>
+                    </div>
+                    <button @click="removeModel(m.id)" class="ml-auto text-xs text-error cursor-pointer hover:underline shrink-0">
+                        ✕ {{ t("common.remove") }}
+                    </button>
+                </div>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                    <template v-for="field in identityFields" :key="'i'+field.key">
+                        <span class="text-muted">{{ field.label }}</span>
+                        <span class="text-toned">{{ field.format ? field.format(m[field.key]) : (m[field.key] || '—') }}</span>
+                    </template>
+                    <template v-if="hasPaidModels" v-for="field in pricingFields" :key="'p'+field.key">
+                        <span class="text-muted">{{ field.label }}</span>
+                        <span class="text-toned">{{ field.format ? field.format(m[field.key]) : (m[field.key] ?? '—') }}</span>
+                    </template>
+                    <template v-for="field in limitFields" :key="'l'+field.key">
+                        <span class="text-muted">{{ field.label }}</span>
+                        <span class="text-toned">{{ formatTokens(m[field.key]) }}</span>
+                    </template>
+                    <template v-for="cap in capabilityFields" :key="'c'+cap.key">
+                        <span class="text-muted">{{ cap.label }}</span>
+                        <span :class="m[cap.key] ? 'text-success' : 'text-muted'">{{ m[cap.key] ? t('common.yes') : '—' }}</span>
+                    </template>
+                    <template v-for="field in timelineFields" :key="'t'+field.key">
+                        <span class="text-muted">{{ field.label }}</span>
+                        <span class="text-toned">{{ m[field.key] || '—' }}</span>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desktop: Comparison grid -->
         <div v-else class="border border-default rounded-xl overflow-x-auto bg-default">
             <!-- Model headers -->
             <div
@@ -313,6 +362,16 @@
     const pricingTab = ref("all");
     const pricingModalOpen = ref(false);
     const limitsModalOpen = ref(false);
+
+    // Mobile detection
+    const isMobile = ref(false);
+    onMounted(() => {
+        isMobile.value = window.innerWidth < 768;
+        const mq = window.matchMedia("(min-width: 768px)");
+        const handler = (e: MediaQueryListEvent) => { isMobile.value = !e.matches; };
+        mq.addEventListener("change", handler);
+        onUnmounted(() => mq.removeEventListener("change", handler));
+    });
 
     // Fetch compare data
     const { data: compareResult } = await useAsyncData(

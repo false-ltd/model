@@ -22,27 +22,30 @@ export const modalityIconMap: Record<string, string> = {
 export const modalityIcon = (mod: string) => modalityIconMap[mod] || "i-lucide-circle-dot";
 
 const modalityInputClasses: Record<string, string> = {
-    image: "bg-green-500/10 text-green-600 dark:text-green-400",
-    audio: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-    video: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
-    pdf: "bg-red-500/10 text-red-500 dark:text-red-400",
+    image: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    audio: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+    video: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    pdf: "bg-rose-500/10 text-rose-500 dark:text-rose-400",
 };
 
 export const modalityInputClass = (mod: string) =>
     modalityInputClasses[mod] || "bg-accented text-toned";
 
-export const modalityOutputClass = () => "bg-blue-500/10 text-blue-500 dark:text-blue-400";
+export const modalityOutputClass = () => "bg-sky-500/10 text-sky-500 dark:text-sky-400";
 
-export const chartColors = [
-    "#e11d48", // rose
-    "#f97316", // orange
-    "#0d9488", // teal
-    "#8b5cf6", // violet
-    "#3b82f6", // blue
-    "#eab308", // yellow
-];
+/** Read a CSS custom property value at runtime */
+export const getCSSVar = (name: string, fallback = ""): string => {
+    if (!import.meta.client) return fallback;
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+};
 
-export const chartColor = (i: number): string => chartColors[i % chartColors.length]!;
+/** Get a chart palette color by index (0–5) */
+export const chartColor = (i: number): string => getCSSVar(`--chart-${i % 6}`);
+
+/** Semantic color helpers */
+export const successColor = () => getCSSVar("--color-success");
+export const dangerColor = () => getCSSVar("--color-danger");
+export const mutedColor = () => getCSSVar("--ui-text-muted");
 
 export const formatMonth = (m: string): string => {
     const [y, mo] = m.split("-");

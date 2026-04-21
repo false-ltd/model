@@ -3,7 +3,8 @@
         "overview": "概览",
         "catalog": "模型目录",
         "providers": "提供商",
-        "compare": "对比"
+        "compare": "对比",
+        "github": "GitHub"
     },
     "search": {
         "placeholder": "搜索模型、提供商..."
@@ -127,7 +128,8 @@
         "colReleased": "发布日期",
         "colLastUpdated": "更新日期",
         "columns": "列",
-        "selected": "已选"
+        "selected": "已选",
+        "filters": "筛选"
     },
     "detail": {
         "pricing": "定价",

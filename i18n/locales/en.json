@@ -3,7 +3,8 @@
         "overview": "Overview",
         "catalog": "Catalog",
         "providers": "Providers",
-        "compare": "Compare"
+        "compare": "Compare",
+        "github": "GitHub"
     },
     "search": {
         "placeholder": "Search models, providers..."
@@ -127,7 +128,8 @@
         "colReleased": "Released",
         "colLastUpdated": "Updated",
         "columns": "Columns",
-        "selected": "Selected"
+        "selected": "Selected",
+        "filters": "Filters"
     },
     "detail": {
         "pricing": "Pricing",

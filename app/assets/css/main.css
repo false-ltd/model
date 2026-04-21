@@ -8,15 +8,35 @@
    ============================================ */
 
 :root {
-    --ui-primary: #e11d48;
     --c-scrollbar-track: #f0eeeb;
     --c-scrollbar-thumb: #ccc8c2;
+
+    /* Chart palette — amber primary + complementary */
+    --chart-0: #d97706;
+    --chart-1: #0d9488;
+    --chart-2: #7c3aed;
+    --chart-3: #e11d48;
+    --chart-4: #0284c7;
+    --chart-5: #059669;
+
+    /* Semantic colors */
+    --color-success: #059669;
+    --color-danger: #e11d48;
 }
 
 .dark {
-    --ui-primary: #fb7185;
     --c-scrollbar-track: #191816;
     --c-scrollbar-thumb: #3d3a36;
+
+    --chart-0: #fbbf24;
+    --chart-1: #2dd4bf;
+    --chart-2: #a78bfa;
+    --chart-3: #fb7185;
+    --chart-4: #38bdf8;
+    --chart-5: #34d399;
+
+    --color-success: #34d399;
+    --color-danger: #fb7185;
 }
 
 html {
@@ -39,11 +59,6 @@ body {
         color 0.2s ease;
 }
 
-::selection {
-    background-color: #f43f5e;
-    color: #fff;
-}
-
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -64,7 +79,6 @@ body {
 
 *:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--color-primary-500);
     border-radius: 4px;
 }
 
@@ -93,4 +107,26 @@ table tbody td {
     text-align: center;
     white-space: nowrap;
     padding: 0.5rem 0.25rem;
+}
+
+/* Expand/collapse transition */
+.expand-enter-active,
+.expand-leave-active {
+    transition: height 0.2s ease-in-out;
+}
+
+/* Compare bar slide-up */
+.slide-up-enter-active,
+.slide-up-leave-active {
+    transition: all 0.25s ease;
+}
+.slide-up-enter-from,
+.slide-up-leave-to {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+}
+.slide-up-enter-to,
+.slide-up-leave-from {
+    opacity: 1;
+    transform: translate(-50%, 0);
 }

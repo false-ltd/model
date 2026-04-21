@@ -16,7 +16,7 @@
         </nav>
 
         <!-- Hero -->
-        <div class="bg-default border border-default rounded-xl p-6 mb-5 hover:border-primary/40 transition-all">
+        <div class="bg-default border border-default rounded-xl p-3 sm:p-6 mb-5 hover:border-primary/40 transition-all">
             <div class="flex flex-col sm:flex-row items-start gap-4">
                 <img
                     :src="`https://models.dev/logos/${model.provider_id}.svg`"
@@ -65,7 +65,7 @@
         </div>
 
         <!-- Pricing -->
-        <div class="bg-default border border-default rounded-xl p-5 mb-4 hover:border-primary/40 transition-all">
+        <div class="bg-default border border-default rounded-xl p-3 sm:p-5 mb-4 hover:border-primary/40 transition-all">
             <div class="text-xs text-muted uppercase tracking-wider font-medium mb-3.5">
                 {{ t("detail.pricing") }} <span class="normal-case tracking-normal">{{ t("detail.perMTokens") }}</span>
             </div>
@@ -81,32 +81,32 @@
         </div>
 
         <!-- Limits -->
-        <div class="bg-default border border-default rounded-xl p-5 mb-4 hover:border-primary/40 transition-all">
+        <div class="bg-default border border-default rounded-xl p-3 sm:p-5 mb-4 hover:border-primary/40 transition-all">
             <div class="text-xs text-muted uppercase tracking-wider font-medium mb-3.5">{{ t("detail.limits") }}</div>
             <div class="flex flex-col gap-3">
                 <ModelLimitBar
                     :label="t('detail.contextWindow')"
                     :value="model.limit_context"
                     :max="2_000_000"
-                    color="#e11d48"
+                    :color="dangerColor()"
                 />
                 <ModelLimitBar
                     :label="t('detail.maxInput')"
                     :value="model.limit_input"
                     :max="2_000_000"
-                    :color="chartColors[1]!"
+                    :color="chartColor(1)"
                 />
                 <ModelLimitBar
                     :label="t('detail.maxOutput')"
                     :value="model.limit_output"
                     :max="128_000"
-                    :color="chartColors[2]!"
+                    :color="chartColor(2)"
                 />
             </div>
         </div>
 
         <!-- Capabilities -->
-        <div class="bg-default border border-default rounded-xl p-5 mb-4 hover:border-primary/40 transition-all">
+        <div class="bg-default border border-default rounded-xl p-3 sm:p-5 mb-4 hover:border-primary/40 transition-all">
             <div class="text-xs text-muted uppercase tracking-wider font-medium mb-3.5">
                 {{ t("detail.capabilities") }}
             </div>
@@ -128,7 +128,7 @@
         </div>
 
         <!-- Modalities -->
-        <div class="bg-default border border-default rounded-xl p-5 mb-4 hover:border-primary/40 transition-all">
+        <div class="bg-default border border-default rounded-xl p-3 sm:p-5 mb-4 hover:border-primary/40 transition-all">
             <div class="text-xs text-muted uppercase tracking-wider font-medium mb-3.5">
                 {{ t("detail.modalities") }}
             </div>
@@ -167,7 +167,7 @@
         </div>
 
         <!-- Timeline -->
-        <div class="bg-default border border-default rounded-xl p-5 mb-4 hover:border-primary/40 transition-all">
+        <div class="bg-default border border-default rounded-xl p-3 sm:p-5 mb-4 hover:border-primary/40 transition-all">
             <div class="text-xs text-muted uppercase tracking-wider font-medium mb-3.5">{{ t("detail.timeline") }}</div>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div class="bg-elevated rounded-lg p-3">
@@ -190,7 +190,7 @@
         </div>
 
         <!-- Integration -->
-        <div class="bg-default border border-default rounded-xl p-5 mb-4 hover:border-primary/40 transition-all">
+        <div class="bg-default border border-default rounded-xl p-3 sm:p-5 mb-4 hover:border-primary/40 transition-all">
             <div class="text-xs text-muted uppercase tracking-wider font-medium mb-3.5">
                 {{ t("detail.integration") }}
             </div>
@@ -256,7 +256,7 @@
         </div>
 
         <!-- Quick Start -->
-        <div class="bg-default border border-default rounded-xl p-5 hover:border-primary/40 transition-all">
+        <div class="bg-default border border-default rounded-xl p-3 sm:p-5 hover:border-primary/40 transition-all">
             <div class="flex justify-between items-center mb-2.5">
                 <div class="text-xs text-muted uppercase tracking-wider font-medium">{{ t("detail.quickStart") }}</div>
                 <CopyButton :value="quickStartCode" />
@@ -265,6 +265,8 @@
                 <pre>{{ quickStartCode }}</pre>
             </div>
         </div>
+
+        <CatalogCompareBar />
     </div>
 </template>
 

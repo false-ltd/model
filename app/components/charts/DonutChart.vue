@@ -41,14 +41,14 @@ let chart: Chart | null = null;
 
 const pct = (count: number) => (props.total > 0 ? Math.round((count / props.total) * 100) : 0);
 
-const getCSSColor = (v: string) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
 
 const renderChart = () => {
     chart?.destroy();
     if (!canvasRef.value || !props.segments.length) return;
 
-    const textColor = getCSSColor("--ui-text-default") || getCSSColor("--ui-text") || "#1c1917";
-    const mutedColor = getCSSColor("--ui-text-muted") || "#a8a29e";
+    const textColor = getCSSVar("--ui-text-default") || getCSSVar("--ui-text");
+    const mutedColor = getCSSVar("--ui-text-muted");
 
     chart = new Chart(canvasRef.value, {
         type: "doughnut",
@@ -59,7 +59,7 @@ const renderChart = () => {
                     data: props.segments.map((s) => s.count),
                     backgroundColor: props.segments.map((s) => s.color),
                     borderWidth: 2,
-                    borderColor: getCSSColor("--ui-bg") || "#fafaf9",
+                    borderColor: getCSSVar("--ui-bg"),
                     hoverOffset: 6,
                 },
             ],

@@ -1,6 +1,7 @@
 <template>
-    <div class="border border-default rounded-xl">
+    <div class="border border-default rounded-xl overflow-hidden">
         <!-- Table -->
+        <div class="overflow-x-auto">
         <UTable
             ref="table"
             sticky
@@ -10,10 +11,11 @@
             :columns="columns"
             class="flex-1 max-h-[calc(100vh)]"
         />
+        </div>
 
         <!-- Pagination -->
         <div v-if="totalPages > 1" class="flex items-center justify-between px-4 py-2.5 border-t border-default">
-            <div class="text-xs text-muted"></div>
+            <div class="text-xs text-muted">{{ rangeStart }}-{{ rangeEnd }} {{ t("common.of") }} {{ totalItems }}</div>
             <UPagination
                 :page="currentPage"
                 :items-per-page="pageSize"
@@ -156,14 +158,19 @@
             header: ({ column }: { column: { id: string } }) => sortHeader(column, t("catalog.colProviderModel")),
             cell: ({ row }: { row: any }) => {
                 const m = row.original;
-                return h("div", { class: "flex items-center gap-2 min-w-0" }, [
-                    h("img", {
-                        src: `https://models.dev/logos/${m.provider_id}.svg`,
-                        class: "w-6 h-6 rounded shrink-0",
-                        onError: (e: Event) => {
-                            (e.target as HTMLImageElement).style.display = "none";
-                        },
-                    }),
+                const children: any[] = [];
+                if (!isMobile.value) {
+                    children.push(
+                        h("img", {
+                            src: `https://models.dev/logos/${m.provider_id}.svg`,
+                            class: "w-6 h-6 rounded shrink-0",
+                            onError: (e: Event) => {
+                                (e.target as HTMLImageElement).style.display = "none";
+                            },
+                        }),
+                    );
+                }
+                children.push(
                     h(
                         NuxtLinkComp,
                         {
@@ -172,9 +179,10 @@
                         },
                         () => m.name,
                     ),
-                ]);
+                );
+                return h("div", { class: "flex items-center gap-2 min-w-0" }, children);
             },
-            size: 240,
+            size: isMobile.value ? 130 : 240,
             enableHiding: false,
         },
         {
@@ -427,13 +435,35 @@
         },
     ]);
 
-    // Column pinning
-    const columnPinning = ref({
-        left: ["select", "name"],
-    });
+    // Column pinning — mobile only pins name
+    const columnPinning = ref({ left: ["select", "name"] });
 
-    // Column visibility
+    // Column visibility — hide secondary columns on mobile
+    const mobileHiddenColumns = [
+        "select", "family", "provider_id", "cost_reasoning", "cost_cache_read", "cost_cache_write",
+        "cost_input_audio", "cost_output_audio", "limit_input", "temperature", "knowledge", "last_updated",
+    ];
+    const isMobile = ref(false);
     const columnVisibility = ref<Record<string, boolean>>({});
+    onMounted(() => {
+        if (window.innerWidth < 768) {
+            isMobile.value = true;
+            columnVisibility.value = Object.fromEntries(mobileHiddenColumns.map((col) => [col, false]));
+            columnPinning.value = { left: ["name"] };
+        }
+        const mq = window.matchMedia("(min-width: 768px)");
+        const handler = (e: MediaQueryListEvent) => {
+            isMobile.value = !e.matches;
+            if (isMobile.value) {
+                columnVisibility.value = Object.fromEntries(mobileHiddenColumns.map((col) => [col, false]));
+                columnPinning.value = { left: ["name"] };
+            } else {
+                columnPinning.value = { left: ["select", "name"] };
+            }
+        };
+        mq.addEventListener("change", handler);
+        onUnmounted(() => mq.removeEventListener("change", handler));
+    });
 
     // Column visibility dropdown items
     const columnMenuItems = computed(() => {

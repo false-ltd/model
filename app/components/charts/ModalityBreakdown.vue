@@ -34,11 +34,11 @@ const canvasRef = ref<HTMLCanvasElement | null>(null);
 let chart: Chart | null = null;
 
 const colorMap: Record<string, string> = {
-    text: chartColors[0]!,
-    image: "#16a34a",
-    audio: chartColors[5]!,
-    video: chartColors[4]!,
-    pdf: chartColors[3]!,
+    text: chartColor(0),
+    image: successColor(),
+    audio: chartColor(5),
+    video: chartColor(4),
+    pdf: chartColor(3),
 };
 
 const renderChart = () => {
@@ -49,8 +49,7 @@ const renderChart = () => {
     const inputMap = Object.fromEntries(props.input.map((m) => [m.type, m.count]));
     const outputMap = Object.fromEntries(props.output.map((m) => [m.type, m.count]));
 
-    const mutedColor =
-        getComputedStyle(document.documentElement).getPropertyValue("--ui-text-muted").trim() || "#a8a29e";
+    const mutedColor = getCSSVar("--ui-text-muted");
 
     chart = new Chart(canvasRef.value, {
         type: "bar",
@@ -60,14 +59,14 @@ const renderChart = () => {
                 {
                     label: "Input",
                     data: allTypes.map((t) => inputMap[t] || 0),
-                    backgroundColor: allTypes.map((t) => (colorMap[t] || "#87867f") + "cc"),
+                    backgroundColor: allTypes.map((t) => (colorMap[t] || getCSSVar("--ui-text-muted")) + "cc"),
                     borderRadius: 4,
                     borderSkipped: false,
                 },
                 {
                     label: "Output",
                     data: allTypes.map((t) => outputMap[t] || 0),
-                    backgroundColor: allTypes.map((t) => (colorMap[t] || "#87867f") + "55"),
+                    backgroundColor: allTypes.map((t) => (colorMap[t] || getCSSVar("--ui-text-muted")) + "55"),
                     borderRadius: 4,
                     borderSkipped: false,
                 },

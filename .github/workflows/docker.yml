@@ -79,7 +79,7 @@ jobs:
             - name: Create secrets
               run: |
                   kubectl create secret generic model-secrets \
-                    --from-literal=database-dsn=${{ secrets.DATABASE_DSN }} \
+                    --from-literal=database-dsn=${{ secrets.MODEL_DATABASE_DSN }} \
                     --from-literal=api-keys=${{ secrets.MODEL_API_KEYS }} \
                     --from-literal=cors-origins=${{ secrets.CORS_ALLOWED_ORIGINS }} \
                     --dry-run=client -o yaml | kubectl apply -n ${{ env.NAMESPACE }} -f -
@@ -92,6 +92,12 @@ jobs:
               run: |
                   kubectl apply -f k8s.yml
                   kubectl rollout status deployment/model -n ${{ env.NAMESPACE }} --timeout=120s
+
+            - name: Debug pod logs on failure
+              if: failure()
+              run: |
+                  kubectl logs -l app=model -n ${{ env.NAMESPACE }} --tail=50 || true
+                  kubectl describe pods -l app=model -n ${{ env.NAMESPACE }} | tail -30 || true
 
             - name: Rollback on failure
               if: failure()

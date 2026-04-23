@@ -30,20 +30,6 @@ spec:
                             secretKeyRef:
                                 name: model-secrets
                                 key: database-dsn
-                      - name: MODEL_API_KEYS
-                        valueFrom:
-                            secretKeyRef:
-                                name: model-secrets
-                                key: api-keys
-                      - name: MODEL_CORS_ALLOWED_ORIGINS
-                        valueFrom:
-                            secretKeyRef:
-                                name: model-secrets
-                                key: cors-origins
-                      - name: MODEL_SYNC_CRON_MINUTES
-                        value: "60"
-                      - name: GIN_MODE
-                        value: release
                   resources:
                       requests:
                           memory: "64Mi"

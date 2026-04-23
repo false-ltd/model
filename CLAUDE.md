@@ -19,13 +19,9 @@ model/
 │   ├── migrations/     Database schema (init.sql)
 │   ├── docs/swagger/   Auto-generated API docs
 │   ├── api.json        Data source from models.dev
-│   ├── go.mod
-│   ├── Dockerfile
-│   └── .dockerignore
+│   └── go.mod
 ├── Dockerfile          ← Multi-stage: Nuxt build → Go binary with embedded frontend
-├── docker-compose.yml  ← Local dev (Go API + MySQL)
-├── k8s.yml             ← Both deployments (frontend + API)
-└── nginx.conf          ← SPA routing
+└── k8s.yml             ← Single deployment (Go binary + embedded frontend)
 ```
 
 ## Commands
@@ -50,7 +46,12 @@ go mod tidy               # Tidy dependencies
 ### Local Development
 
 ```bash
-docker-compose up          # Start Go API + MySQL (frontend uses pnpm dev separately)
+# Frontend (separate terminal)
+pnpm dev
+
+# Backend — requires local MySQL with MODEL_DATABASE_DSN or uses default
+cd api
+go run ./cmd/server
 ```
 
 No test runner or linter configured. Use `pnpm build` to verify frontend, `go build` to verify backend.
@@ -125,7 +126,7 @@ All responses wrapped in `{ code, data, message, meta? }`. Paginated endpoints i
 
 ### Middleware
 
-- **CORS**: Configured via `CORS_ALLOWED_ORIGINS`
+- **CORS**: Configured via `MODEL_CORS_ALLOWED_ORIGINS`
 - **Rate limiting**: 60 req/min (general), 10 req/min (sync)
 - **Auth**: Bearer token for sync endpoint only
 - **Request ID**: UUID generation
@@ -134,23 +135,37 @@ All responses wrapped in `{ code, data, message, meta? }`. Paginated endpoints i
 
 MySQL 8.0. Schema in `api/migrations/init.sql`. Tables: `providers`, `models`.
 
-### Environment
+### Environment Variables
 
-See `.env.example` for all variables. Key ones:
+All app-specific env vars use `MODEL_` prefix:
 
-- `NUXT_PUBLIC_API_BASE` — Go API URL (build-time, embedded in frontend)
-- `DB_HOST/PORT/USER/PASSWORD/NAME` — MySQL connection
-- `API_KEYS` — Comma-separated auth keys for sync
-- `CORS_ALLOWED_ORIGINS` — Allowed frontend origins
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MODEL_DATABASE_DSN` | `root:123456@tcp(127.0.0.1:3306)/models?charset=utf8mb4&parseTime=True&loc=Local` | MySQL connection DSN |
+| `MODEL_API_KEYS` | *(empty)* | Comma-separated auth keys for sync endpoint |
+| `MODEL_CORS_ALLOWED_ORIGINS` | `*` | Allowed frontend origins |
+| `MODEL_SERVER_PORT` | `8080` | HTTP listen port |
+| `MODEL_SYNC_CRON_MINUTES` | `60` | Auto-sync interval in minutes |
+| `MODEL_SYNC_COOLDOWN_MINUTES` | `10` | Minimum gap between manual syncs |
+| `MODEL_MODELS_DEV_URL` | `https://models.dev/api.json` | Data source URL |
+| `MODEL_GIN_MODE` | `debug` | Gin framework mode (`debug`/`release`) |
+
+Frontend build-time: `NUXT_PUBLIC_API_BASE` — Go API URL (embedded at build time).
+
+### Database Setup
+
+MySQL 8.0, schema in `api/migrations/init.sql`. Two tables: `providers`, `models`. Composite unique key on `models` is `(model_id, provider_id)` — sync uses upsert on this pair.
+
+```sql
+CREATE DATABASE model DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'model'@'10.0.0.%' IDENTIFIED BY 'PASSWORD';
+GRANT ALL PRIVILEGES ON model.* TO 'model'@'10.0.0.%';
+FLUSH PRIVILEGES;
+```
 
 ## Deployment
 
-Single `k8s.yml` with two deployments:
-
-- `model` — Frontend (nginx serving static files), `model.false.ltd`
-- `models-api` — Go API, `api.model.false.ltd`
-
-GitHub Actions builds a single Docker image (multi-stage: Nuxt → Go binary) and deploys on push to main.
+Single `k8s.yml` with one `model` deployment (Go binary with embedded frontend). GitHub Actions builds multi-arch Docker image (multi-stage: Nuxt → Go binary) and deploys on push to main. Image tagged with `sha-<short>` for rollbacks.
 
 ## API Schema
 

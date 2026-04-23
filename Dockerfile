@@ -27,6 +27,5 @@ FROM scratch
 ENV TZ=Asia/Shanghai
 COPY --from=backend /model /model
 COPY --from=backend /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=backend /usr/share/zoneinfo /usr/share/zoneinfo
 EXPOSE 8080
 ENTRYPOINT ["/model"]

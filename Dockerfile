@@ -8,7 +8,7 @@ COPY . .
 RUN pnpm run generate
 
 # Stage 2: Build Go binary with embedded frontend
-FROM golang:1.22-alpine AS backend
+FROM golang:alpine AS backend
 ARG GIT_SHA=unknown
 WORKDIR /app
 COPY api/go.mod api/go.sum ./

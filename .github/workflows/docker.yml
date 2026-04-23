@@ -79,10 +79,8 @@ jobs:
             - name: Create secrets
               run: |
                   kubectl create secret generic model-secrets \
-                    --from-literal=db-user=${{ secrets.DB_USER }} \
-                    --from-literal=db-password=${{ secrets.DB_PASSWORD }} \
-                    --from-literal=db-host=${{ secrets.DB_HOST }} \
-                    --from-literal=api-keys=${{ secrets.API_KEYS }} \
+                    --from-literal=database-dsn=${{ secrets.DATABASE_DSN }} \
+                    --from-literal=api-keys=${{ secrets.MODEL_API_KEYS }} \
                     --from-literal=cors-origins=${{ secrets.CORS_ALLOWED_ORIGINS }} \
                     --dry-run=client -o yaml | kubectl apply -n ${{ env.NAMESPACE }} -f -
 

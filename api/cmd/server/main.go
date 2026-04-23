@@ -39,7 +39,7 @@ func main() {
 	sqlDB.SetMaxOpenConns(25)
 	sqlDB.SetMaxIdleConns(10)
 
-	log.Printf("connected to MySQL at %s:%s/%s", cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
+	log.Printf("connected to MySQL")
 
 	providerRepo := repository.NewProviderRepo(db)
 	modelRepo := repository.NewModelRepo(db)

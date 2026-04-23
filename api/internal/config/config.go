@@ -19,11 +19,7 @@ type ServerConfig struct {
 }
 
 type DatabaseConfig struct {
-	Host     string
-	Port     string
-	User     string
-	Password string
-	Name     string
+	dsn string
 }
 
 type SyncConfig struct {
@@ -43,32 +39,28 @@ type CORSConfig struct {
 func Load() *Config {
 	return &Config{
 		Server: ServerConfig{
-			Port: getEnv("SERVER_PORT", "8080"),
-			Mode: getEnv("GIN_MODE", "debug"),
+			Port: getEnv("MODEL_SERVER_PORT", "8080"),
+			Mode: getEnv("MODEL_GIN_MODE", "release"),
 		},
 		Database: DatabaseConfig{
-			Host:     getEnv("DB_HOST", "127.0.0.1"),
-			Port:     getEnv("DB_PORT", "3306"),
-			User:     getEnv("DB_USER", "root"),
-			Password: getEnv("DB_PASSWORD", "123456"),
-			Name:     getEnv("DB_NAME", "models"),
+			dsn: getEnv("MODEL_DATABASE_DSN", "root:123456@tcp(127.0.0.1:3306)/models?charset=utf8mb4&parseTime=True&loc=Local"),
 		},
 		Sync: SyncConfig{
-			CooldownMinutes: getEnvInt("SYNC_COOLDOWN_MINUTES", 10),
-			ModelsDevURL:    getEnv("MODELS_DEV_URL", "https://models.dev/api.json"),
-			CronMinutes:     getEnvInt("SYNC_CRON_MINUTES", 60),
+			CooldownMinutes: getEnvInt("MODEL_SYNC_COOLDOWN_MINUTES", 10),
+			ModelsDevURL:    getEnv("MODEL_MODELS_DEV_URL", "https://models.dev/api.json"),
+			CronMinutes:     getEnvInt("MODEL_SYNC_CRON_MINUTES", 60),
 		},
 		Auth: AuthConfig{
-			APIKeys: getEnvSlice("API_KEYS", []string{}),
+			APIKeys: getEnvSlice("MODEL_API_KEYS", []string{}),
 		},
 		CORS: CORSConfig{
-			AllowedOrigins: getEnv("CORS_ALLOWED_ORIGINS", "*"),
+			AllowedOrigins: getEnv("MODEL_CORS_ALLOWED_ORIGINS", "*"),
 		},
 	}
 }
 
 func (d *DatabaseConfig) DSN() string {
-	return d.User + ":" + d.Password + "@tcp(" + d.Host + ":" + d.Port + ")/" + d.Name + "?charset=utf8mb4&parseTime=True&loc=Local"
+	return d.dsn
 }
 
 func getEnv(key, fallback string) string {

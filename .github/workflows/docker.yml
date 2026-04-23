@@ -50,7 +50,7 @@ jobs:
               with:
                   context: .
                   push: true
-                  platforms: linux/amd64,linux/arm64
+                  platforms: linux/arm64 # linux/amd64,linux/arm64
                   tags: ${{ steps.meta.outputs.tags }}
                   labels: ${{ steps.meta.outputs.labels }}
                   cache-from: type=gha
@@ -79,9 +79,9 @@ jobs:
             - name: Create secrets
               run: |
                   kubectl create secret generic model-secrets \
-                    --from-literal=database-dsn=${{ secrets.MODEL_DATABASE_DSN }} \
-                    --from-literal=api-keys=${{ secrets.MODEL_API_KEYS }} \
-                    --from-literal=cors-origins=${{ secrets.CORS_ALLOWED_ORIGINS }} \
+                    --from-literal=database-dsn="${{ secrets.MODEL_DATABASE_DSN }}" \
+                    --from-literal=api-keys="${{ secrets.MODEL_API_KEYS }}" \
+                    --from-literal=cors-origins="${{ secrets.CORS_ALLOWED_ORIGINS }}" \
                     --dry-run=client -o yaml | kubectl apply -n ${{ env.NAMESPACE }} -f -
 
             - name: Set image tag

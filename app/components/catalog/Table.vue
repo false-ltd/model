@@ -440,10 +440,27 @@
         "cost_input_audio", "cost_output_audio", "limit_input", "knowledge", "last_updated",
     ];
     const { isMobile } = useMobile();
-    const columnVisibility = ref<Record<string, boolean>>({});
+    const STORAGE_KEY = "catalog-column-visibility";
+
+    const loadColumnVisibility = (): Record<string, boolean> => {
+        if (isMobile.value) {
+            return Object.fromEntries(mobileHiddenColumns.map((col) => [col, false]));
+        }
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) return JSON.parse(raw);
+        } catch {}
+        return {};
+    };
+
+    const columnVisibility = ref<Record<string, boolean>>(loadColumnVisibility());
+
+    watch(columnVisibility, (val) => {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(val)); } catch {}
+    }, { deep: true });
+
     onMounted(() => {
         if (isMobile.value) {
-            columnVisibility.value = Object.fromEntries(mobileHiddenColumns.map((col) => [col, false]));
             columnPinning.value = { left: [] };
         }
         watch(isMobile, (mobile) => {
@@ -451,6 +468,8 @@
                 columnVisibility.value = Object.fromEntries(mobileHiddenColumns.map((col) => [col, false]));
                 columnPinning.value = { left: [] };
             } else {
+                // Restore saved visibility (exclude mobile-only hidden columns)
+                columnVisibility.value = loadColumnVisibility();
                 columnPinning.value = { left: ["select", "name"] };
             }
         });

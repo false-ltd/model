@@ -16,7 +16,9 @@
         "syncing": "同步中...",
         "autoSync": "自动同步：每2小时",
         "syncAgo": "{time}前",
-        "syncSkipped": "刚刚同步过，已跳过"
+        "syncSkipped": "刚刚同步过，已跳过",
+        "syncFailed": "同步失败，请稍后重试",
+        "syncSuccess": "数据同步成功"
     },
     "common": {
         "copy": "复制",

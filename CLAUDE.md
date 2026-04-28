@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AI model data analysis site — browse, compare, and visualize pricing/capability data for LLMs. Monorepo with Nuxt 4 frontend + Go (Gin+Gorm) backend API. Deploys to k3s via GitHub Actions.
+AI model data analysis site — browse, compare, and visualize pricing/capability data for LLMs. Monorepo with Nuxt 4 frontend (SPA mode, SSR disabled) + Go (Gin+Gorm) backend API. Deploys to k3s via GitHub Actions.
 
 ## Repository Structure
 
@@ -80,6 +80,7 @@ No test runner or linter configured. Use `pnpm build` to verify frontend, `go bu
 - `useAutoSync` — Sync trigger + status polling
 - `useProviders` — Provider list for providers page
 - `useMobile` — Responsive breakpoint detection
+- `useChart` — Shared Chart.js lifecycle composable (canvas ref, render/destroy, auto-watch). All chart components use this instead of manual `onMounted`/`onUnmounted`/`watch`
 
 ### Catalog Table
 
@@ -91,7 +92,7 @@ No test runner or linter configured. Use `pnpm build` to verify frontend, `go bu
 
 ### Chart Components (`app/components/charts/`)
 
-All use Chart.js directly (not a wrapper library). Each component registers only the Chart.js modules it needs. Pattern: `ref<HTMLCanvasElement>`, create chart in `onMounted`, destroy in `onUnmounted`, re-render on prop changes via `watch`. Use `chartColor(i)` from `app/utils/format.ts` for colors — never hardcode.
+All use Chart.js directly (not a wrapper library). Each component uses the `useChart()` composable from `app/composables/useChart.ts` which handles canvas ref, chart creation/destruction, and auto-watching a reactive source. Shared chart utilities are in `app/utils/chart.ts` (`chartColors()`, `chartFont()`, `chartAnimation`, `chartTooltip`, `chartTickFont`, `chartLegendLabels`). Use `chartColor(i)` from `app/utils/format.ts` for data series colors — never hardcode.
 
 ### Theming
 

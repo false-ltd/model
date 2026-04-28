@@ -2,7 +2,7 @@
 export default defineNuxtConfig({
     compatibilityDate: "2025-07-15",
     devtools: { enabled: false },
-    modules: ["@nuxt/ui", "@nuxtjs/i18n", "@nuxtjs/color-mode"],
+    modules: ["@nuxt/ui", "@nuxtjs/i18n"],
     ssr: false,
     colorMode: {
         preference: "system",
@@ -38,7 +38,7 @@ export default defineNuxtConfig({
     nitro: {},
     vite: {
         optimizeDeps: {
-            include: ["chart.js", "vue-chartjs"],
+            include: ["chart.js"],
         },
     },
     ui: {

@@ -34,9 +34,14 @@ export function useAutoSync() {
             }
             if (result.data.skipped) {
                 syncMessage.value = t("footer.syncSkipped");
+            } else {
+                const toast = useToast();
+                toast.add({ title: t("footer.syncSuccess"), color: "success", icon: "i-lucide-check-circle" });
             }
         } catch (e) {
             console.error("Sync failed", e);
+            const toast = useToast();
+            toast.add({ title: t("footer.syncFailed"), color: "error", icon: "i-lucide-circle-x" });
         } finally {
             syncing.value = false;
         }

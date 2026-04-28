@@ -16,7 +16,9 @@
         "syncing": "Syncing...",
         "autoSync": "Auto-sync: every 2h",
         "syncAgo": "{time} ago",
-        "syncSkipped": "Synced recently, skipped"
+        "syncSkipped": "Synced recently, skipped",
+        "syncFailed": "Sync failed, please try again later",
+        "syncSuccess": "Data synced successfully"
     },
     "common": {
         "copy": "Copy",

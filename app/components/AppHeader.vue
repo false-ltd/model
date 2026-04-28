@@ -15,16 +15,10 @@
 
             <!-- Desktop actions -->
             <div class="hidden md:flex items-center gap-1">
-                <ULink to="https://github.com/false-ltd/model" external>
-                    <UIcon name="i-lucide-github" class="text-base" />
-                </ULink>
+                <UButton variant="ghost" color="neutral" icon="i-lucide-github" to="https://github.com/false-ltd/model" external target="_blank" />
                 <UColorModeButton class="cursor-pointer" />
                 <UDropdownMenu :items="localeItems">
-                    <button
-                        class="p-1.5 cursor-pointer rounded-lg hover:bg-accented transition-colors flex items-center gap-1.5"
-                    >
-                        <UIcon name="i-lucide-languages" class="w-4 h-4 text-toned" />
-                    </button>
+                    <UButton variant="ghost" color="neutral" icon="i-lucide-languages" />
                 </UDropdownMenu>
             </div>
 
@@ -35,9 +29,7 @@
             <div class="flex md:hidden items-center gap-1">
                 <UColorModeButton />
                 <UDropdownMenu :items="mobileMenuItems" :content="{ align: 'end' }">
-                    <button class="p-1.5 rounded-lg hover:bg-accented transition-colors">
-                        <UIcon name="i-lucide-menu" class="w-5 h-5 text-toned" />
-                    </button>
+                    <UButton variant="ghost" color="neutral" icon="i-lucide-menu" />
                 </UDropdownMenu>
             </div>
         </div>

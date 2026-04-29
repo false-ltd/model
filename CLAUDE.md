@@ -67,7 +67,7 @@ No test runner or linter configured. Use `pnpm build` to verify frontend, `go bu
 - `index.vue` — Overview dashboard with KPI cards and Chart.js charts
 - `catalog.vue` — Searchable/filterable model table (UTable) and grid view
 - `providers.vue` — Provider list with search, links to filtered catalog
-- `model/[id].vue` — Model detail (pricing, limits, capabilities, modalities, timeline, integration, quick start)
+- `model/[modelId].vue` — Model detail (pricing, limits, capabilities, modalities, timeline, integration, quick start)
 - `compare.vue` — Side-by-side comparison of up to 4 models
 
 ### Composables

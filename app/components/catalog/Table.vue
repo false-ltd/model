@@ -1,7 +1,5 @@
 <template>
-    <div class="border border-default rounded-xl overflow-hidden">
-        <!-- Table -->
-        <div class="overflow-x-auto">
+    <div class="border border-default rounded-xl">
         <UTable
             ref="table"
             sticky
@@ -11,6 +9,7 @@
             :columns="columns"
             :loading="loading"
             :ui="{
+                base: 'min-w-max',
                 tbody: '[&>tr]:hover:bg-accented/50 [&>tr]:transition-colors [&>tr]:cursor-pointer',
             }"
             class="flex-1 max-h-[calc(100vh)]"
@@ -26,12 +25,13 @@
                 </div>
             </template>
         </UTable>
-        </div>
 
         <!-- Pagination -->
         <div v-if="totalPages > 1" class="flex items-center justify-between px-4 py-2.5 border-t border-default">
             <div class="flex items-center gap-2">
-                <div class="text-xs text-muted">{{ rangeStart }}-{{ rangeEnd }} {{ t("common.of") }} {{ totalItems }}</div>
+                <div class="text-xs text-muted">
+                    {{ rangeStart }}-{{ rangeEnd }} {{ t("common.of") }} {{ totalItems }}
+                </div>
                 <div class="flex items-center gap-0.5 bg-default border border-default rounded-md p-0.5">
                     <button
                         v-for="size in [20, 50, 100]"
@@ -59,6 +59,12 @@
     import type { TableColumn } from "@nuxt/ui";
     import { inlineBadgeClass } from "~/utils/badge";
     import type { Model } from "~/types";
+
+    const formatDate = (v: string | null) => {
+        if (!v) return "\u2014";
+        const d = new Date(v);
+        return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    };
 
     const UCheckbox = resolveComponent("UCheckbox");
     const UButton = resolveComponent("UButton");
@@ -108,9 +114,9 @@
 
     const showMaxToast = () => {
         toast.add({
-            title: t('compare.maxReached'),
-            description: t('compare.maxReachedHint'),
-            color: 'warning' as const,
+            title: t("compare.maxReached"),
+            description: t("compare.maxReachedHint"),
+            color: "warning" as const,
         });
     };
 
@@ -177,27 +183,6 @@
     // Column definitions
     const columns = computed<TableColumn<any>[]>(() => [
         {
-            id: "select",
-            header: () => h("span", { class: "text-muted" }, "Select"),
-            cell: ({ row }: { row: any }) =>
-                h("div", { onClick: (e: Event) => e.stopPropagation() }, [
-                    h(UCheckbox, {
-                        modelValue: modelIds.value.includes(row.original.id),
-                        "onUpdate:modelValue": () => {
-                            modelIds.value.includes(row.original.id)
-                                ? removeModel(row.original.id)
-                                : (() => {
-                                    const result = addModel(row.original.id);
-                                    if (!result.added && result.reason === 'max') showMaxToast();
-                                })();
-                        },
-                        "aria-label": "Select row",
-                    }),
-                ]),
-            size: 50,
-            enableHiding: false,
-        },
-        {
             id: "name",
             accessorKey: "name",
             header: ({ column }: { column: { id: string } }) => sortHeader(column, t("catalog.colProviderModel")),
@@ -206,18 +191,38 @@
                 const rowChildren: any[] = [];
                 if (!isMobile.value) {
                     rowChildren.push(
-                        h("div", {
-                            class: "w-6 h-6 rounded shrink-0 bg-elevated flex items-center justify-center text-[9px] font-bold text-muted relative overflow-hidden",
-                        }, [
-                            h("span", m.provider_id?.charAt(0).toUpperCase()),
-                            h("img", {
-                                src: `https://models.dev/logos/${m.provider_id}.svg`,
-                                class: "absolute inset-0 w-full h-full object-cover rounded",
-                                onError: (e: Event) => {
-                                    (e.target as HTMLImageElement).style.display = "none";
+                        h("div", { onClick: (e: Event) => e.stopPropagation() }, [
+                            h(UCheckbox, {
+                                modelValue: modelIds.value.includes(m.id),
+                                "onUpdate:modelValue": () => {
+                                    modelIds.value.includes(m.id)
+                                        ? removeModel(m.id)
+                                        : (() => {
+                                              const result = addModel(m.id);
+                                              if (!result.added && result.reason === "max") showMaxToast();
+                                          })();
                                 },
-                            }) as any,
+                                "aria-label": "Select row",
+                            }),
                         ]),
+                    );
+                    rowChildren.push(
+                        h(
+                            "div",
+                            {
+                                class: "w-6 h-6 rounded shrink-0 bg-elevated flex items-center justify-center text-[9px] font-bold text-muted relative overflow-hidden",
+                            },
+                            [
+                                h("span", m.provider_id?.charAt(0).toUpperCase()),
+                                h("img", {
+                                    src: `https://models.dev/logos/${m.provider_id}.svg`,
+                                    class: "absolute inset-0 w-full h-full object-cover rounded",
+                                    onError: (e: Event) => {
+                                        (e.target as HTMLImageElement).style.display = "none";
+                                    },
+                                }) as any,
+                            ],
+                        ),
                     );
                 }
                 const textCol: any[] = [
@@ -232,19 +237,31 @@
                 ];
                 const badges: any[] = [];
                 if (m.cost_input === 0) badges.push(h("span", { class: inlineBadgeClass("free") }, t("common.free")));
-                if (m.reasoning) badges.push(h("span", { class: inlineBadgeClass("reasoning") }, t("catalog.reasoning")));
-                if (m.tool_call) badges.push(h("span", { class: inlineBadgeClass("tool_call") }, t("catalog.colToolCall")));
-                if (m.open_weights) badges.push(h("span", { class: inlineBadgeClass("open_weights") }, t("common.open")));
-                if (m.structured_output) badges.push(h("span", { class: inlineBadgeClass("structured_output") }, t("catalog.colStructured")));
-                if (m.attachment) badges.push(h("span", { class: inlineBadgeClass("attachment") }, t("catalog.colAttachment")));
-                if (m.temperature) badges.push(h("span", { class: inlineBadgeClass("temperature") }, t("catalog.colTemperature")));
+                if (m.reasoning)
+                    badges.push(h("span", { class: inlineBadgeClass("reasoning") }, t("catalog.reasoning")));
+                if (m.tool_call)
+                    badges.push(h("span", { class: inlineBadgeClass("tool_call") }, t("catalog.colToolCall")));
+                if (m.open_weights)
+                    badges.push(h("span", { class: inlineBadgeClass("open_weights") }, t("common.open")));
+                if (m.structured_output)
+                    badges.push(
+                        h("span", { class: inlineBadgeClass("structured_output") }, t("catalog.colStructured")),
+                    );
+                if (m.attachment)
+                    badges.push(h("span", { class: inlineBadgeClass("attachment") }, t("catalog.colAttachment")));
+                if (m.temperature)
+                    badges.push(h("span", { class: inlineBadgeClass("temperature") }, t("catalog.colTemperature")));
                 if (badges.length) {
                     textCol.push(h("div", { class: "flex items-center gap-1 mt-0.5 flex-wrap" }, badges));
                 }
                 rowChildren.push(h("div", { class: "flex flex-col min-w-0" }, textCol));
-                return h("div", { class: "flex items-center gap-2 min-w-0", onClick: (e: Event) => e.stopPropagation() }, rowChildren);
+                return h(
+                    "div",
+                    { class: "flex items-center gap-2 min-w-0", onClick: (e: Event) => e.stopPropagation() },
+                    rowChildren,
+                );
             },
-            size: isMobile.value ? 130 : 260,
+            size: isMobile.value ? 130 : 290,
             enableHiding: false,
         },
         {
@@ -421,23 +438,31 @@
             id: "release_date",
             accessorKey: "release_date",
             header: ({ column }: { column: { id: string } }) => sortHeader(column, t("catalog.colReleased")),
-            cell: ({ row }: { row: any }) => h("span", { class: "text-toned" }, row.original.release_date || "\u2014"),
+            cell: ({ row }: { row: any }) => h("span", { class: "text-toned" }, formatDate(row.original.release_date)),
             size: 110,
         },
         {
             id: "last_updated",
             accessorKey: "last_updated",
             header: ({ column }: { column: { id: string } }) => sortHeader(column, t("catalog.colLastUpdated")),
-            cell: ({ row }: { row: any }) => h("span", { class: "text-toned" }, row.original.last_updated || "\u2014"),
+            cell: ({ row }: { row: any }) => h("span", { class: "text-toned" }, formatDate(row.original.last_updated)),
             size: 110,
         },
     ]);
 
-    const columnPinning = ref<{ left: string[] }>({ left: ["select", "name"] });
+    const columnPinning = ref<Record<string, string[]>>({ left: ["name"] });
 
     const mobileHiddenColumns = [
-        "select", "family", "provider_id", "cost_reasoning", "cost_cache_read", "cost_cache_write",
-        "cost_input_audio", "cost_output_audio", "limit_input", "knowledge", "last_updated",
+        "family",
+        "provider_id",
+        "cost_reasoning",
+        "cost_cache_read",
+        "cost_cache_write",
+        "cost_input_audio",
+        "cost_output_audio",
+        "limit_input",
+        "knowledge",
+        "last_updated",
     ];
     const { isMobile } = useMobile();
     const STORAGE_KEY = "catalog-column-visibility";
@@ -455,9 +480,15 @@
 
     const columnVisibility = ref<Record<string, boolean>>(loadColumnVisibility());
 
-    watch(columnVisibility, (val) => {
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(val)); } catch {}
-    }, { deep: true });
+    watch(
+        columnVisibility,
+        (val) => {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(val));
+            } catch {}
+        },
+        { deep: true },
+    );
 
     onMounted(() => {
         if (isMobile.value) {
@@ -470,7 +501,7 @@
             } else {
                 // Restore saved visibility (exclude mobile-only hidden columns)
                 columnVisibility.value = loadColumnVisibility();
-                columnPinning.value = { left: ["select", "name"] };
+                columnPinning.value = { left: ["name"] };
             }
         });
     });

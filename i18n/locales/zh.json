@@ -242,5 +242,17 @@
         "maxReached": "已达到对比上限",
         "maxReachedHint": "最多可同时对比 4 个模型",
         "best": "最佳"
+    },
+    "seo": {
+        "indexTitle": "AI 模型目录 — 概览",
+        "indexDescription": "浏览和对比 AI/LLM 模型的定价、能力和性能。探索提供商统计、模态覆盖、开放权重分布和成本分级。",
+        "catalogTitle": "模型目录 — AI 模型目录",
+        "catalogDescription": "按提供商、定价、能力和模态搜索筛选 AI 模型。对比输入/输出成本、上下文窗口、推理支持和功能覆盖。",
+        "providersTitle": "AI 提供商 — AI 模型目录",
+        "providersDescription": "浏览 AI 模型提供商。对比各平台的 API 端点、SDK 包和模型目录。",
+        "compareTitle": "对比模型 — AI 模型目录",
+        "compareDescription": "最多 4 个 AI 模型的并排对比。对比定价、上下文窗口、能力、模态和集成详情。",
+        "detailTitle": "{name} — {provider}",
+        "detailDescription": "{provider} 的 {name} 模型。定价、上下文窗口限制、能力、模态和快速开始代码。"
     }
 }

@@ -38,9 +38,15 @@ export function useCompareData(compareModels: Ref<Model[]>) {
         { key: "temperature", label: t("compare.temperature") },
     ]);
 
+    const formatDate = (v: string | null) => {
+        if (!v) return "\u2014";
+        const d = new Date(v);
+        return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    };
+
     const timelineFields = computed(() => [
-        { key: "release_date", label: t("compare.releaseDate") },
-        { key: "last_updated", label: t("compare.lastUpdated") },
+        { key: "release_date", label: t("compare.releaseDate"), format: formatDate },
+        { key: "last_updated", label: t("compare.lastUpdated"), format: formatDate },
         { key: "knowledge", label: t("compare.knowledge") },
         { key: "status", label: t("compare.status") },
     ]);

@@ -2,7 +2,7 @@
 export default defineNuxtConfig({
     compatibilityDate: "2025-07-15",
     devtools: { enabled: false },
-    modules: ["@nuxt/ui", "@nuxtjs/i18n"],
+    modules: ["@nuxt/ui", "@nuxtjs/i18n", "@nuxtjs/seo"],
     ssr: false,
     colorMode: {
         preference: "system",
@@ -15,6 +15,19 @@ export default defineNuxtConfig({
         head: {
             link: [{ rel: "icon", type: "image/svg+xml", href: "/favicon.svg" }],
         },
+    },
+    site: {
+        url: process.env.NUXT_PUBLIC_SITE_URL || "https://model.false.ltd",
+        name: "AI Model Catalog",
+        description:
+            "Browse, compare, and analyze AI/LLM model pricing, capabilities, and performance across all major providers.",
+        defaultLocale: "en",
+    },
+    sitemap: {
+        zeroRuntime: true,
+    },
+    linkChecker: {
+        failOnError: false,
     },
     i18n: {
         locales: [

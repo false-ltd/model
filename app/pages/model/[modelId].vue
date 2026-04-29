@@ -147,9 +147,9 @@
                         :context-label="t('detail.contextWindow')"
                         :input-label="t('detail.maxInput')"
                         :output-label="t('detail.maxOutput')"
-                        :context="model.limit_context"
-                        :input="model.limit_input"
-                        :output="model.limit_output"
+                        :context="model.limit_context ?? 0"
+                        :input="model.limit_input ?? 0"
+                        :output="model.limit_output ?? 0"
                     />
                 </div>
             </div>
@@ -214,7 +214,8 @@
                         <div class="space-y-2.5">
                             <div v-for="item in timelineItems" :key="item.label" class="flex justify-between items-center">
                                 <span class="text-xs text-muted">{{ item.label }}</span>
-                                <span class="text-xs font-mono text-default">{{ item.value }}</span>
+                                <NuxtTime v-if="item.date" :datetime="item.date" month="short" day="numeric" year="numeric" class="text-xs font-mono text-default" />
+                                <span v-else class="text-xs font-mono text-default">{{ item.text }}</span>
                             </div>
                         </div>
                     </div>
@@ -296,9 +297,17 @@
 
     const { model, pricingFields } = await useModelDetail();
 
-    const isInCompare = computed(() => modelIds.value.includes(model.value?.id));
+    useSeoMeta({
+        title: () => t("seo.detailTitle", { name: model.value?.name || "", provider: model.value?.providers?.name || "" }),
+        ogTitle: () => t("seo.detailTitle", { name: model.value?.name || "", provider: model.value?.providers?.name || "" }),
+        description: () => t("seo.detailDescription", { name: model.value?.name || "", provider: model.value?.providers?.name || "" }),
+        ogDescription: () => t("seo.detailDescription", { name: model.value?.name || "", provider: model.value?.providers?.name || "" }),
+        twitterCard: "summary",
+    });
 
-    const isVision = computed(() => isVisionModel(model.value));
+    const isInCompare = computed(() => model.value ? modelIds.value.includes(model.value.id) : false);
+
+    const isVision = computed(() => model.value ? isVisionModel(model.value) : false);
     const hasAudio = computed(() =>
         model.value?.modalities_input?.includes("audio") || model.value?.modalities_output?.includes("audio"),
     );
@@ -376,10 +385,10 @@
     ]);
 
     const timelineItems = computed(() => [
-        { label: t("detail.released"), value: model.value?.release_date || "\u2014" },
-        { label: t("detail.updated"), value: model.value?.last_updated || "\u2014" },
-        { label: t("detail.knowledge"), value: model.value?.knowledge || "\u2014" },
-        { label: t("detail.status"), value: model.value?.status || "\u2014" },
+        { label: t("detail.released"), date: model.value?.release_date ?? null, text: "\u2014" },
+        { label: t("detail.updated"), date: model.value?.last_updated ?? null, text: "\u2014" },
+        { label: t("detail.knowledge"), date: null, text: model.value?.knowledge || "\u2014" },
+        { label: t("detail.status"), date: null, text: model.value?.status || "\u2014" },
     ]);
 </script>
 

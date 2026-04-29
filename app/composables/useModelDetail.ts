@@ -5,7 +5,7 @@ export async function useModelDetail() {
     const { t } = useI18n();
     const config = useRuntimeConfig();
 
-    const modelId = Number(route.params.id);
+    const modelId = Number(route.params.modelId);
 
     const { data: result } = await useAsyncData(`model-${modelId}`, () =>
         $fetch<ApiResponse<Model>>(`${config.public.apiBase}/api/v1/models/${modelId}`),

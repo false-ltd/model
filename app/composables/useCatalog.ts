@@ -1,5 +1,10 @@
 import { watchDebounced } from "@vueuse/core";
-import type { Model, CatalogMeta, SelectItem } from "~/types";
+import type { Model, CatalogMeta, ApiResponse, SelectItem } from "~/types";
+
+const EMPTY_CATALOG = {
+    data: [] as Model[],
+    meta: { total: 0, page: 1, page_size: 100, total_pages: 0 } as CatalogMeta,
+};
 
 export function useCatalog() {
     const route = useRoute();
@@ -34,21 +39,21 @@ export function useCatalog() {
             key: "freeOnly" as const,
             label: t("catalog.free"),
             icon: "i-lucide-badge-dollar-sign",
-            color: "emerald",
+            color: "success",
             default: true,
         },
         {
             key: "reasoning" as const,
             label: t("catalog.reasoning"),
             icon: "i-lucide-brain",
-            color: "amber",
+            color: "warning",
             default: true,
         },
         {
             key: "toolCall" as const,
             label: t("catalog.colToolCall"),
             icon: "i-lucide-wrench",
-            color: "blue",
+            color: "info",
             default: true,
         },
         { key: "vision" as const, label: t("catalog.vision"), icon: "i-lucide-eye", color: "primary", default: true },
@@ -56,21 +61,21 @@ export function useCatalog() {
             key: "openWeights" as const,
             label: t("catalog.colWeights"),
             icon: "i-lucide-unlock",
-            color: "violet",
+            color: "secondary",
             default: true,
         },
-        { key: "attachment" as const, label: t("catalog.colAttachment"), icon: "i-lucide-paperclip", color: "rose" },
+        { key: "attachment" as const, label: t("catalog.colAttachment"), icon: "i-lucide-paperclip", color: "error" },
         {
             key: "structuredOutput" as const,
             label: t("catalog.colStructured"),
             icon: "i-lucide-braces",
-            color: "purple",
+            color: "info",
         },
         {
             key: "temperature" as const,
             label: t("catalog.colTemperature"),
             icon: "i-lucide-thermometer",
-            color: "stone",
+            color: "secondary",
         },
     ]);
 
@@ -79,17 +84,6 @@ export function useCatalog() {
         currentPage.value = 1;
         syncToUrl();
     };
-
-    const catalogData = ref<{
-        data: Model[];
-        meta: CatalogMeta;
-    }>({
-        data: [],
-        meta: { total: 0, page: 1, page_size: 100, total_pages: 0 },
-    });
-
-    const models = computed((): Model[] => catalogData.value.data);
-    const loading = ref(false);
 
     const buildQuery = (): Record<string, string> => {
         const query: Record<string, string> = {};
@@ -167,15 +161,19 @@ export function useCatalog() {
         syncToUrl();
     };
 
-    const fetchCatalog = async () => {
-        loading.value = true;
-        try {
-            const res = await $fetch(`${config.public.apiBase}/api/v1/models`, { params: buildApiParams() });
-            catalogData.value = res as any;
-        } finally {
-            loading.value = false;
-        }
-    };
+    const { data: catalogData, pending: loading, execute: fetchCatalog } = useAsyncData(
+        "catalog",
+        async () => {
+            const res = await $fetch<ApiResponse<Model[]>>(`${config.public.apiBase}/api/v1/models`, { params: buildApiParams() });
+            return { data: res.data, meta: res.meta ?? EMPTY_CATALOG.meta };
+        },
+        {
+            immediate: false,
+            default: () => EMPTY_CATALOG,
+        },
+    );
+
+    const models = computed((): Model[] => catalogData.value.data);
 
     watch(
         [selectedProviders, selectedInputTypes, selectedOutputTypes, filters],
@@ -212,7 +210,7 @@ export function useCatalog() {
         if (page < 1 || page > catalogData.value.meta.total_pages) return;
         currentPage.value = page;
         syncToUrl();
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        if (import.meta.client) window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
     const changePageSize = (size: number) => {

@@ -242,5 +242,17 @@
         "maxReached": "Compare limit reached",
         "maxReachedHint": "You can compare up to 4 models at a time.",
         "best": "Best"
+    },
+    "seo": {
+        "indexTitle": "AI Model Catalog — Overview",
+        "indexDescription": "Browse and compare AI/LLM model pricing, capabilities, and performance. Explore provider statistics, modality coverage, open weights distribution, and cost tiers across all major AI models.",
+        "catalogTitle": "Model Catalog — AI Model Catalog",
+        "catalogDescription": "Search and filter AI models by provider, pricing, capabilities, and modalities. Compare input/output costs, context windows, reasoning support, and feature coverage.",
+        "providersTitle": "AI Providers — AI Model Catalog",
+        "providersDescription": "Browse AI model providers. Compare provider offerings, API endpoints, SDK packages, and model catalogs across all major platforms.",
+        "compareTitle": "Compare Models — AI Model Catalog",
+        "compareDescription": "Side-by-side comparison of up to 4 AI models. Compare pricing, context windows, capabilities, modalities, and integration details.",
+        "detailTitle": "{name} — {provider}",
+        "detailDescription": "{name} by {provider}. Pricing, context window limits, capabilities, modalities, and quick start code."
     }
 }

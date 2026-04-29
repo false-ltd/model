@@ -152,4 +152,12 @@
     const localePath = useLocalePath();
     const { t } = useI18n();
     const { viewMode, search, filtered } = useProviders();
+
+    useSeoMeta({
+        title: t("seo.providersTitle"),
+        ogTitle: t("seo.providersTitle"),
+        description: t("seo.providersDescription"),
+        ogDescription: t("seo.providersDescription"),
+        twitterCard: "summary",
+    });
 </script>

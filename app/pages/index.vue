@@ -71,6 +71,14 @@
     const localePath = useLocalePath();
     const { t } = useI18n();
     const config = useRuntimeConfig();
+
+    useSeoMeta({
+        title: t("seo.indexTitle"),
+        ogTitle: t("seo.indexTitle"),
+        description: t("seo.indexDescription"),
+        ogDescription: t("seo.indexDescription"),
+        twitterCard: "summary_large_image",
+    });
     const { data: result } = await useAsyncData("overview-stats", () => $fetch(`${config.public.apiBase}/api/v1/stats`));
 
     const stats = computed(

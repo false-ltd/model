@@ -83,6 +83,14 @@
 
     const { t } = useI18n();
 
+    useSeoMeta({
+        title: t("seo.catalogTitle"),
+        ogTitle: t("seo.catalogTitle"),
+        description: t("seo.catalogDescription"),
+        ogDescription: t("seo.catalogDescription"),
+        twitterCard: "summary_large_image",
+    });
+
     const {
         providerSearch,
         topProviders,

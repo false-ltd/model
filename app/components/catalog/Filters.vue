@@ -1,77 +1,108 @@
 <template>
-    <!-- Row 1: Title + controls -->
-    <div class="flex items-center justify-between gap-3 mb-3">
-        <div class="shrink-0">
-            <h1 class="text-xl font-bold text-default">{{ $t("catalog.title") }}</h1>
-            <div class="text-sm text-muted">{{ total }} {{ $t("nav.catalog") }}</div>
-        </div>
-        <div class="flex items-center gap-2">
-            <!-- Mobile: Filter toggle -->
-            <button
-                v-if="isMobile"
-                @click="filtersOpen = !filtersOpen"
-                class="relative flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs cursor-pointer transition-colors border shrink-0"
-                :class="
-                    filtersOpen || activeFilterCount > 0
-                        ? 'bg-primary/10 border-primary/30 text-primary'
-                        : 'bg-default border-default text-toned hover:border-accented'
-                "
-            >
-                <UIcon name="i-lucide-sliders-horizontal" class="size-3.5" />
-                <span>{{ $t("catalog.filters") }}</span>
-                <span
-                    v-if="activeFilterCount > 0"
-                    class="absolute -top-1.5 -right-1.5 bg-primary text-white text-[10px] font-bold rounded-full size-4 flex items-center justify-center"
+    <!-- Mobile: Title + filter toggle -->
+    <template v-if="isMobile">
+        <div class="flex items-center justify-between gap-3 mb-4">
+            <div>
+                <h1 class="text-xl font-bold text-default">{{ $t("catalog.title") }}</h1>
+                <div class="text-sm text-muted">{{ total }} {{ $t("nav.catalog") }}</div>
+            </div>
+            <div class="flex items-center gap-2">
+                <UButton
+                    @click="filtersOpen = !filtersOpen"
+                    icon="i-lucide-sliders-horizontal"
+                    :label="$t('catalog.filters')"
+                    :color="filtersOpen || activeFilterCount > 0 ? 'primary' : 'neutral'"
+                    :variant="filtersOpen || activeFilterCount > 0 ? 'soft' : 'outline'"
+                    size="sm"
                 >
-                    {{ activeFilterCount }}
-                </span>
-            </button>
+                    <template v-if="activeFilterCount > 0" #trailing>
+                        <UBadge :label="String(activeFilterCount)" color="primary" variant="solid" size="xs" />
+                    </template>
+                </UButton>
+            </div>
+        </div>
+        <UInput
+            :model-value="search"
+            @update:model-value="(v: string) => emit('update:search', v)"
+            :placeholder="$t('search.placeholder')"
+            icon="i-lucide-search"
+            size="lg"
+            class="w-full mb-4"
+        />
+    </template>
 
-            <!-- Search -->
+    <!-- Desktop: Row 1 — Title + Search + Column visibility -->
+    <template v-else>
+        <div class="flex items-center gap-3 mb-4">
+            <h1 class="text-xl font-bold text-default whitespace-nowrap">
+                {{ $t("catalog.title") }}
+                <span class="text-sm font-normal text-muted ml-1">{{ total }} {{ $t("nav.catalog") }}</span>
+            </h1>
             <UInput
                 :model-value="search"
                 @update:model-value="(v: string) => emit('update:search', v)"
+                @keydown.escape="emit('update:search', '')"
                 :placeholder="$t('search.placeholder')"
                 icon="i-lucide-search"
-                class="w-40 sm:w-60"
+                size="lg"
+                class="flex-1 search-input"
+            >
+                <template v-if="search" #trailing>
+                    <UButton
+                        icon="i-lucide-x"
+                        color="neutral"
+                        variant="ghost"
+                        size="xs"
+                        @click="emit('update:search', '')"
+                    />
+                </template>
+            </UInput>
+            <UDropdownMenu
+                v-if="columnMenuItems.length"
+                :items="[columnMenuItems]"
+                :content="{ align: 'end' }"
+            >
+                <UButton icon="i-lucide-columns-3-cog" color="neutral" variant="outline" size="md" />
+            </UDropdownMenu>
+        </div>
+
+        <!-- Desktop: Row 2 — All filters in one line -->
+        <div class="flex flex-wrap items-center gap-2 mb-4">
+            <UButton
+                v-for="toggle in filterToggles"
+                :key="toggle.key"
+                @click="$emit('toggleFilter', toggle.key)"
+                :icon="toggle.icon"
+                :label="toggle.label"
+                :color="filters[toggle.key] ? toggle.color : 'neutral'"
+                :variant="filters[toggle.key] ? 'soft' : 'outline'"
+                size="sm"
             />
 
-            <!-- Desktop: Capabilities Popover -->
-            <UPopover v-if="!isMobile">
-                <button :class="triggerClass(!!capabilityCount)">
-                    <UIcon name="i-lucide-sliders-horizontal" class="size-3.5" />
-                    <span>{{ $t('catalog.features') }}</span>
-                    <span
-                        v-if="capabilityCount"
-                        class="inline-flex items-center justify-center bg-primary text-white text-[10px] font-bold rounded-full size-4"
-                    >
-                        {{ capabilityCount }}
-                    </span>
-                </button>
-                <template #content>
-                    <div class="p-2">
-                        <div class="grid grid-cols-2 gap-1">
-                            <button
-                                v-for="toggle in filterToggles"
-                                :key="toggle.key"
-                                @click="$emit('toggleFilter', toggle.key)"
-                                class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs cursor-pointer transition-colors"
-                                :class="filterBtnClass(toggle)"
-                            >
-                                <UIcon :name="toggle.icon" class="size-3.5" />
-                                <span>{{ toggle.label }}</span>
-                            </button>
-                        </div>
-                    </div>
-                </template>
-            </UPopover>
+            <span class="text-muted text-sm select-none">|</span>
 
-            <!-- Desktop: Price Popover -->
-            <UPopover v-if="!isMobile">
-                <button :class="triggerClass(priceActive)">
-                    <UIcon name="i-lucide-dollar-sign" class="size-3.5" />
-                    <span>{{ $t('catalog.price') }}</span>
-                </button>
+            <CatalogProviderPopover
+                v-model:providerSearch="providerSearch"
+                :selected-providers="selectedProviders"
+                :top-providers="topProviders"
+                :grouped-providers="groupedProviders"
+                :filtered-providers="filteredProviders"
+                :provider-trigger-label="providerTriggerLabel"
+                :is-selected="isSelected"
+                @toggle-provider="$emit('toggleProvider', $event)"
+                @remove-provider="$emit('removeProvider', $event)"
+                @clear-providers="$emit('clearProviders')"
+            />
+
+            <!-- Price Popover -->
+            <UPopover>
+                <UButton
+                    icon="i-lucide-dollar-sign"
+                    :label="$t('catalog.price')"
+                    :color="priceActive ? 'primary' : 'neutral'"
+                    :variant="priceActive ? 'soft' : 'outline'"
+                    size="sm"
+                />
                 <template #content>
                     <div class="p-3 space-y-3 w-80">
                         <div>
@@ -96,18 +127,19 @@
                 </template>
             </UPopover>
 
-            <!-- Desktop: I/O Types Popover -->
-            <UPopover v-if="!isMobile">
-                <button :class="triggerClass(!!ioTypeCount)">
-                    <UIcon name="i-lucide-arrow-left-right" class="size-3.5" />
-                    <span>{{ $t('catalog.ioTypes') }}</span>
-                    <span
-                        v-if="ioTypeCount"
-                        class="inline-flex items-center justify-center bg-primary text-white text-[10px] font-bold rounded-full size-4"
-                    >
-                        {{ ioTypeCount }}
-                    </span>
-                </button>
+            <!-- I/O Types Popover -->
+            <UPopover>
+                <UButton
+                    icon="i-lucide-arrow-left-right"
+                    :label="$t('catalog.ioTypes')"
+                    :color="ioTypeCount ? 'primary' : 'neutral'"
+                    :variant="ioTypeCount ? 'soft' : 'outline'"
+                    size="sm"
+                >
+                    <template v-if="ioTypeCount" #trailing>
+                        <UBadge :label="String(ioTypeCount)" color="primary" variant="solid" size="xs" />
+                    </template>
+                </UButton>
                 <template #content>
                     <div class="p-2 w-72">
                         <div class="grid grid-cols-2 gap-3">
@@ -146,63 +178,35 @@
                 </template>
             </UPopover>
 
-            <!-- Desktop: Provider Popover -->
-            <CatalogProviderPopover
-                v-if="!isMobile"
-                v-model:providerSearch="providerSearch"
-                :selected-providers="selectedProviders"
-                :top-providers="topProviders"
-                :grouped-providers="groupedProviders"
-                :filtered-providers="filteredProviders"
-                :provider-trigger-label="providerTriggerLabel"
-                :is-selected="isSelected"
-                @toggle-provider="$emit('toggleProvider', $event)"
-                @remove-provider="$emit('removeProvider', $event)"
-                @clear-providers="$emit('clearProviders')"
-            />
-
-            <!-- Desktop: Column visibility -->
-            <UDropdownMenu
-                v-if="!isMobile && columnMenuItems.length"
-                :items="[columnMenuItems]"
-                :content="{ align: 'end' }"
-            >
-                <UButton icon="i-lucide-columns-3-cog" color="neutral" variant="outline" size="md" />
-            </UDropdownMenu>
+            <!-- Clear All (when 2+ filters active) -->
+            <template v-if="activeFilterCount > 1">
+                <span class="text-muted text-sm select-none">|</span>
+                <UButton
+                    icon="i-lucide-x"
+                    :label="$t('common.clearAll')"
+                    color="error"
+                    variant="ghost"
+                    size="xs"
+                    @click="clearAllFilters"
+                />
+            </template>
         </div>
-    </div>
-
-    <!-- Active filter pills -->
-    <TransitionGroup v-if="activePills.length" name="fade" tag="div" class="flex flex-wrap items-center gap-1.5 mb-4">
-        <span
-            v-for="(pill, i) in activePills"
-            :key="i"
-            class="inline-flex items-center gap-1 rounded-full pl-2.5 pr-1.5 py-0.5 bg-primary/10 text-primary text-xs font-medium"
-        >
-            {{ pill.label }}
-            <button @click="pill.remove" class="hover:text-error cursor-pointer transition-colors">
-                <UIcon name="i-lucide-x" class="size-3" />
-            </button>
-        </span>
-        <button v-if="activePills.length > 1" @click="clearAllFilters" class="text-xs text-muted hover:text-error cursor-pointer transition-colors">
-            {{ $t("common.clearAll") }}
-        </button>
-    </TransitionGroup>
+    </template>
 
     <!-- Mobile: Expandable filter panel -->
     <Transition name="expand" @enter="onExpandEnter" @after-enter="onExpandAfterEnter" @leave="onExpandLeave">
         <div v-if="isMobile && filtersOpen" class="mb-4 space-y-2.5">
-            <div class="flex items-center gap-2 flex-wrap">
-                <button
+            <div class="flex flex-wrap gap-2">
+                <UButton
                     v-for="toggle in filterToggles"
                     :key="toggle.key"
                     @click="$emit('toggleFilter', toggle.key)"
-                    class="flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs cursor-pointer transition-colors"
-                    :class="filterBtnClass(toggle)"
-                >
-                    <UIcon :name="toggle.icon" class="size-3.5" />
-                    <span>{{ toggle.label }}</span>
-                </button>
+                    :icon="toggle.icon"
+                    :label="toggle.label"
+                    :color="filters[toggle.key] ? toggle.color : 'neutral'"
+                    :variant="filters[toggle.key] ? 'soft' : 'outline'"
+                    size="xs"
+                />
             </div>
 
             <CatalogProviderPopover
@@ -270,17 +274,9 @@
 </template>
 
 <style scoped>
-.fade-enter-active,
-.fade-leave-active {
-    transition: all 0.2s ease;
-}
-.fade-enter-from {
-    opacity: 0;
-    transform: translateY(4px);
-}
-.fade-leave-to {
-    opacity: 0;
-    transform: translateY(-4px);
+.search-input :deep(input:focus) {
+    box-shadow: 0 0 0 2px var(--ui-bg-elevated), 0 0 0 4px var(--ui-border-accented);
+    border-color: var(--ui-border-accented);
 }
 </style>
 
@@ -318,31 +314,6 @@
     const { isMobile } = useMobile();
     const filtersOpen = ref(false);
 
-    const colorMap: Record<string, { bg: string; border: string; text: string }> = {
-        emerald: { bg: "bg-emerald-500/10", border: "border-emerald-500/30", text: "text-emerald-500" },
-        amber:   { bg: "bg-amber-500/10",   border: "border-amber-500/30",   text: "text-amber-500" },
-        blue:    { bg: "bg-blue-500/10",     border: "border-blue-500/30",     text: "text-blue-500" },
-        violet:  { bg: "bg-violet-500/10",   border: "border-violet-500/30",   text: "text-violet-500" },
-        rose:    { bg: "bg-rose-500/10",      border: "border-rose-500/30",     text: "text-rose-500" },
-        purple:  { bg: "bg-purple-500/10",    border: "border-purple-500/30",   text: "text-purple-500" },
-        stone:   { bg: "bg-stone-500/10",     border: "border-stone-500/30",    text: "text-stone-500" },
-        primary: { bg: "bg-primary/10",       border: "border-primary/30",       text: "text-primary" },
-    };
-
-    const filterBtnClass = (toggle: { key: string; color: string }) => {
-        if (props.filters[toggle.key]) {
-            const c = colorMap[toggle.color] ?? colorMap.primary!;
-            return `${c.bg} border ${c.border} ${c.text}`;
-        }
-        return "bg-default border border-default text-toned hover:border-accented";
-    };
-
-    const triggerClass = (active: boolean) => {
-        const base = "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs cursor-pointer transition-colors border shrink-0";
-        if (active) return `${base} bg-primary/10 border-primary/30 text-primary`;
-        return `${base} bg-default border-default text-toned hover:border-accented`;
-    };
-
     const modalityBtnClass = (type: string) => modalityClass(type);
     const isTypeSelected = (list: any[], value: string) => list?.some((t: any) => (t.value ?? t) === value);
     const toggleInputType = (value: string) => {
@@ -370,29 +341,14 @@
     });
     const ioTypeCount = computed(() => (selectedInputTypes.value?.length || 0) + (selectedOutputTypes.value?.length || 0));
 
-    const activeFilterCount = computed(() => activePills.value.length);
-
-    const activePills = computed(() => {
-        const pills: { label: string; remove: () => void }[] = [];
-        if (props.search) pills.push({ label: `"${props.search}"`, remove: () => emit("update:search", "") });
-        props.filterToggles.forEach((toggle) => {
-            if ((props.filters as any)[toggle.key]) pills.push({ label: toggle.label, remove: () => emit("toggleFilter", toggle.key) });
-        });
-        props.selectedProviders?.forEach((p: any) => {
-            const name = p.label || p.name || p.value;
-            pills.push({ label: name, remove: () => emit("removeProvider", p) });
-        });
-        selectedInputTypes.value?.forEach((item: any) => {
-            pills.push({ label: item.label || item.value, remove: () => { selectedInputTypes.value = selectedInputTypes.value.filter((x: any) => (x.value ?? x) !== (item.value ?? item)); } });
-        });
-        selectedOutputTypes.value?.forEach((item: any) => {
-            pills.push({ label: item.label || item.value, remove: () => { selectedOutputTypes.value = selectedOutputTypes.value.filter((x: any) => (x.value ?? x) !== (item.value ?? item)); } });
-        });
-        const pr = priceRange.value || [0, 100];
-        if (pr[0] !== 0 || pr[1] !== 100) pills.push({ label: `In $${pr[0]}–${pr[1]}`, remove: () => { priceRange.value = [0, 100]; } });
-        const opr = outputPriceRange.value || [0, 100];
-        if (opr[0] !== 0 || opr[1] !== 100) pills.push({ label: `Out $${opr[0]}–${opr[1]}`, remove: () => { outputPriceRange.value = [0, 100]; } });
-        return pills;
+    const activeFilterCount = computed(() => {
+        let count = props.search ? 1 : 0;
+        count += Object.values(props.filters).filter(Boolean).length;
+        count += props.selectedProviders?.length || 0;
+        count += (selectedInputTypes.value?.length || 0);
+        count += (selectedOutputTypes.value?.length || 0);
+        if (priceActive.value) count++;
+        return count;
     });
 
     const clearAllFilters = () => {

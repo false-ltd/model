@@ -328,6 +328,14 @@
     const { t } = useI18n();
     const config = useRuntimeConfig();
 
+    useSeoMeta({
+        title: t("seo.compareTitle"),
+        ogTitle: t("seo.compareTitle"),
+        description: t("seo.compareDescription"),
+        ogDescription: t("seo.compareDescription"),
+        twitterCard: "summary_large_image",
+    });
+
     const pricingTab = ref("all");
     const { isMobile } = useMobile();
 

@@ -1,15 +1,16 @@
 <template>
     <UPopover modal>
-        <button :class="triggerBtnClass">
-            <UIcon name="i-lucide-building-2" class="size-3.5" />
-            <span>{{ providerTriggerLabel }}</span>
-            <span
-                v-if="selectedProviders.length"
-                class="inline-flex items-center justify-center bg-primary text-white text-[10px] font-bold rounded-full size-4"
-            >
-                {{ selectedProviders.length }}
-            </span>
-        </button>
+        <UButton
+            icon="i-lucide-building-2"
+            :label="providerTriggerLabel"
+            :color="selectedProviders.length > 0 ? 'primary' : 'neutral'"
+            :variant="selectedProviders.length > 0 ? 'soft' : 'outline'"
+            size="sm"
+        >
+            <template v-if="selectedProviders.length" #trailing>
+                <UBadge :label="String(selectedProviders.length)" color="primary" variant="solid" size="xs" />
+            </template>
+        </UButton>
 
         <template #content>
             <div class="w-96 max-h-105 overflow-y-auto bg-default border border-default rounded-xl shadow-lg">
@@ -155,12 +156,6 @@
     }>()
 
     const providerSearch = defineModel<string>('providerSearch', { required: true })
-
-    const triggerBtnClass = computed(() => {
-        const base = 'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs cursor-pointer transition-colors border shrink-0';
-        if (props.selectedProviders.length > 0) return `${base} bg-primary/10 border-primary/30 text-primary`;
-        return `${base} bg-default border-default text-toned hover:border-accented`;
-    })
 
     defineEmits<{
         toggleProvider: [provider: any]

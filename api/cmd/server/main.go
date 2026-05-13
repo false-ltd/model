@@ -55,6 +55,7 @@ func main() {
 		Stats:    handler.NewStatsHandler(statsService),
 		Compare:  handler.NewCompareHandler(modelService),
 		Sync:     handler.NewSyncHandler(syncService),
+		Sitemap:  handler.NewSitemapHandler(modelRepo, providerRepo, cfg.Server.SiteURL),
 	}
 
 	engine := router.Setup(cfg, handlers)

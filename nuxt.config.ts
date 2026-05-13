@@ -2,7 +2,7 @@
 export default defineNuxtConfig({
     compatibilityDate: "2025-07-15",
     devtools: { enabled: false },
-    modules: ["@nuxt/ui", "@nuxtjs/i18n", "@nuxtjs/seo"],
+    modules: ["@nuxt/ui", "@nuxtjs/i18n"],
     ssr: false,
     colorMode: {
         preference: "system",
@@ -14,20 +14,14 @@ export default defineNuxtConfig({
         buildAssetsDir: "assets",
         head: {
             link: [{ rel: "icon", type: "image/svg+xml", href: "/favicon.svg" }],
+            meta: [
+                { name: "applicable-device", content: "pc,mobile" },
+                { name: "description", content: "Browse, compare, and analyze AI/LLM model pricing, capabilities, and performance across all major providers." },
+                { name: "baidu-site-verification", content: "CODE" },
+                { name: "sogou_site_verification", content: "CODE" },
+                { name: "360-site-verification", content: "CODE" },
+            ],
         },
-    },
-    site: {
-        url: process.env.NUXT_PUBLIC_SITE_URL || "https://model.false.ltd",
-        name: "AI Model Catalog",
-        description:
-            "Browse, compare, and analyze AI/LLM model pricing, capabilities, and performance across all major providers.",
-        defaultLocale: "en",
-    },
-    sitemap: {
-        zeroRuntime: true,
-    },
-    linkChecker: {
-        failOnError: false,
     },
     i18n: {
         locales: [
@@ -48,7 +42,9 @@ export default defineNuxtConfig({
             apiBase: process.env.NUXT_PUBLIC_API_BASE || "",
         },
     },
-    nitro: {},
+    nitro: {
+        compressPublicAssets: true,
+    },
     vite: {
         optimizeDeps: {
             include: ["chart.js"],

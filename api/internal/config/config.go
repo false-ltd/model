@@ -14,8 +14,9 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port string
-	Mode string
+	Port    string
+	Mode    string
+	SiteURL string
 }
 
 type DatabaseConfig struct {
@@ -39,8 +40,9 @@ type CORSConfig struct {
 func Load() *Config {
 	return &Config{
 		Server: ServerConfig{
-			Port: getEnv("MODEL_SERVER_PORT", "8080"),
-			Mode: getEnv("MODEL_GIN_MODE", "release"),
+			Port:    getEnv("MODEL_SERVER_PORT", "8080"),
+			Mode:    getEnv("MODEL_GIN_MODE", "release"),
+			SiteURL: getEnv("MODEL_SITE_URL", "https://model.false.ltd"),
 		},
 		Database: DatabaseConfig{
 			dsn: getEnv("MODEL_DATABASE_DSN", "root:123456@tcp(127.0.0.1:3306)/models?charset=utf8mb4&parseTime=True&loc=Local"),

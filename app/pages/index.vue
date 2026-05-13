@@ -77,6 +77,7 @@
         ogTitle: t("seo.indexTitle"),
         description: t("seo.indexDescription"),
         ogDescription: t("seo.indexDescription"),
+        keywords: t("seo.indexKeywords"),
         twitterCard: "summary_large_image",
     });
     const { data: result } = await useAsyncData("overview-stats", () => $fetch(`${config.public.apiBase}/api/v1/stats`));

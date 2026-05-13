@@ -158,6 +158,7 @@
         ogTitle: t("seo.providersTitle"),
         description: t("seo.providersDescription"),
         ogDescription: t("seo.providersDescription"),
+        keywords: t("seo.providersKeywords"),
         twitterCard: "summary",
     });
 </script>

@@ -245,14 +245,19 @@
     },
     "seo": {
         "indexTitle": "AI Model Catalog — Overview",
-        "indexDescription": "Browse and compare AI/LLM model pricing, capabilities, and performance. Explore provider statistics, modality coverage, open weights distribution, and cost tiers across all major AI models.",
+        "indexDescription": "Browse and compare AI/LLM model pricing, capabilities, and performance. 浏览和对比 AI/LLM 模型的定价、能力和性能，覆盖所有主流提供商。",
+        "indexKeywords": "AI model,LLM,large language model,AI pricing,model comparison,AI catalog,GPT,Claude,Gemini,AI模型,大模型,AI定价,模型对比",
         "catalogTitle": "Model Catalog — AI Model Catalog",
-        "catalogDescription": "Search and filter AI models by provider, pricing, capabilities, and modalities. Compare input/output costs, context windows, reasoning support, and feature coverage.",
+        "catalogDescription": "Search and filter AI models by provider, pricing, capabilities, and modalities. 按提供商、定价、能力和模态搜索筛选 AI 模型。",
+        "catalogKeywords": "AI model catalog,LLM model list,model filter,AI model price comparison,free AI model,reasoning model,vision model,AI模型目录,大模型筛选,AI模型价格",
         "providersTitle": "AI Providers — AI Model Catalog",
-        "providersDescription": "Browse AI model providers. Compare provider offerings, API endpoints, SDK packages, and model catalogs across all major platforms.",
+        "providersDescription": "Browse AI model providers. Compare provider offerings, API endpoints, SDK packages, and model catalogs across all major platforms. 浏览 AI 模型提供商，对比各平台能力。",
+        "providersKeywords": "AI provider,LLM platform,OpenAI,Anthropic,Google AI,Azure AI,model API provider,AI提供商,大模型平台,模型API",
         "compareTitle": "Compare Models — AI Model Catalog",
-        "compareDescription": "Side-by-side comparison of up to 4 AI models. Compare pricing, context windows, capabilities, modalities, and integration details.",
+        "compareDescription": "Side-by-side comparison of up to 4 AI models. 最多 4 个 AI 模型并排对比定价、能力和更多维度。",
+        "compareKeywords": "AI model comparison,LLM model compare,model performance,AI pricing comparison,model selection,AI模型对比,大模型比较,模型选型",
         "detailTitle": "{name} — {provider}",
-        "detailDescription": "{name} by {provider}. Pricing, context window limits, capabilities, modalities, and quick start code."
+        "detailDescription": "{name} by {provider}. Pricing, context window limits, capabilities, modalities, and quick start code. {provider} 的 {name} 模型详情。",
+        "detailKeywords": "{name},{provider},AI model,AI pricing,context window,model capabilities,AI模型,AI定价,上下文窗口,模型能力"
     }
 }

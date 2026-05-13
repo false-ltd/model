@@ -302,6 +302,7 @@
         ogTitle: () => t("seo.detailTitle", { name: model.value?.name || "", provider: model.value?.providers?.name || "" }),
         description: () => t("seo.detailDescription", { name: model.value?.name || "", provider: model.value?.providers?.name || "" }),
         ogDescription: () => t("seo.detailDescription", { name: model.value?.name || "", provider: model.value?.providers?.name || "" }),
+        keywords: () => t("seo.detailKeywords", { name: model.value?.name || "", provider: model.value?.providers?.name || "" }),
         twitterCard: "summary",
     });
 

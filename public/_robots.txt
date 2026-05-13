@@ -1,2 +1,13 @@
 User-Agent: *
 Disallow:
+
+User-Agent: Baiduspider
+Disallow:
+
+User-Agent: Sogou web spider
+Disallow:
+
+User-Agent: 360Spider
+Disallow:
+
+Sitemap: https://model.false.ltd/sitemap.xml

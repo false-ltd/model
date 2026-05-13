@@ -333,6 +333,7 @@
         ogTitle: t("seo.compareTitle"),
         description: t("seo.compareDescription"),
         ogDescription: t("seo.compareDescription"),
+        keywords: t("seo.compareKeywords"),
         twitterCard: "summary_large_image",
     });
 

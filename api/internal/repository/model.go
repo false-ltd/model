@@ -224,6 +224,12 @@ func (r *ModelRepo) FindProviderModelCounts() ([]struct {
 	return results, err
 }
 
+func (r *ModelRepo) FindAllIDs() ([]uint, error) {
+	var ids []uint
+	err := r.db.Model(&model.AIModel{}).Pluck("id", &ids).Error
+	return ids, err
+}
+
 func (r *ModelRepo) DeleteNotInModelIDs(keepIDs []string) error {
 	if len(keepIDs) == 0 {
 		return nil

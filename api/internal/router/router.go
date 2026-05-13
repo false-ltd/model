@@ -22,6 +22,7 @@ type Handlers struct {
 	Stats    *handler.StatsHandler
 	Compare  *handler.CompareHandler
 	Sync     *handler.SyncHandler
+	Sitemap  *handler.SitemapHandler
 }
 
 func Setup(cfg *config.Config, h *Handlers) *gin.Engine {
@@ -39,6 +40,7 @@ func Setup(cfg *config.Config, h *Handlers) *gin.Engine {
 	limiter := middleware.NewRateLimiter()
 
 	r.GET("/health", handler.Health)
+	r.GET("/sitemap.xml", h.Sitemap.Sitemap)
 
 	// Swagger documentation
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

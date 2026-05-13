@@ -88,6 +88,7 @@
         ogTitle: t("seo.catalogTitle"),
         description: t("seo.catalogDescription"),
         ogDescription: t("seo.catalogDescription"),
+        keywords: t("seo.catalogKeywords"),
         twitterCard: "summary_large_image",
     });
 

@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 COPY . .
-RUN pnpm run build
+RUN pnpm run generate
 
 # Stage 2: Build Go binary (native amd64, cross-compile to arm64)
 FROM --platform=$BUILDPLATFORM golang:alpine AS backend

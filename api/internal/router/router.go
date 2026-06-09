@@ -3,6 +3,7 @@ package router
 import (
 	"io/fs"
 	"net/http"
+	"path"
 	"strings"
 
 	"github.com/false-ltd/model/api/internal/config"
@@ -69,7 +70,7 @@ func Setup(cfg *config.Config, h *Handlers) *gin.Engine {
 }
 
 // SetupSPA serves embedded frontend static files with SPA fallback.
-// Should be called after Setup() to add NoRoute handler.
+// Only whitelisted SPA routes get index.html; everything else returns 404.
 func SetupSPA(r *gin.Engine) {
 	sub, err := fs.Sub(frontend.DistFS, "dist")
 	if err != nil {
@@ -78,17 +79,52 @@ func SetupSPA(r *gin.Engine) {
 	fileServer := http.FileServer(http.FS(sub))
 
 	r.NoRoute(func(c *gin.Context) {
-		path := strings.TrimPrefix(c.Request.URL.Path, "/")
+		reqPath := c.Request.URL.Path
+		trimmed := strings.TrimPrefix(reqPath, "/")
 
-		// Try to serve static file
-		f, err := fs.Stat(sub, path)
-		if err == nil && !f.IsDir() {
+		// Serve known static files (_nuxt/*, favicon, etc.)
+		if trimmed != "" {
+			if f, err := fs.Stat(sub, trimmed); err == nil && !f.IsDir() {
+				fileServer.ServeHTTP(c.Writer, c.Request)
+				return
+			}
+		}
+
+		// Only whitelisted SPA routes get index.html fallback
+		if isSPARoute(path.Clean(reqPath)) {
+			c.Request.URL.Path = "/"
 			fileServer.ServeHTTP(c.Writer, c.Request)
 			return
 		}
 
-		// SPA fallback: serve index.html
-		c.Request.URL.Path = "/"
-		fileServer.ServeHTTP(c.Writer, c.Request)
+		c.Status(http.StatusNotFound)
 	})
+}
+
+// isSPARoute checks if the path is a known SPA route.
+// Pages: /, /catalog, /compare, /providers, /model/:id
+// i18n prefix_except_default: /zh prefix for Chinese locale.
+func isSPARoute(p string) bool {
+	p = path.Clean(p)
+	allowed := []string{
+		"/",
+		"/catalog",
+		"/compare",
+		"/providers",
+		"/zh",
+		"/zh/catalog",
+		"/zh/compare",
+		"/zh/providers",
+	}
+	for _, a := range allowed {
+		if p == a {
+			return true
+		}
+	}
+	// Dynamic routes: /model/:id, /zh/model/:id
+	if strings.HasPrefix(p, "/model/") || p == "/model" ||
+		strings.HasPrefix(p, "/zh/model/") || p == "/zh/model" {
+		return true
+	}
+	return false
 }

@@ -35,10 +35,10 @@
                 </div>
                 <button
                     @click.prevent.stop="toggleCompare"
-                    class="rounded-lg px-2 py-1 text-xs cursor-pointer transition-colors border"
+                    class="rounded-lg px-2 py-1 cursor-pointer transition-colors border"
                     :class="isInCompare ? 'bg-primary text-white border-primary' : 'bg-elevated text-toned border-default hover:border-primary hover:text-primary'"
                 >
-                    {{ isInCompare ? "✓" : "+" }}
+                    <UIcon :name="isInCompare ? 'i-lucide-check' : 'i-lucide-plus'" class="size-3" />
                 </button>
             </div>
         </div>
@@ -55,7 +55,6 @@
         model: any;
     }>();
 
-    const providerName = computed(() => props.model.providers?.name || props.model.provider_id);
     const isFree = computed(() => isFreeModel(props.model));
     const hasVision = computed(() => isVisionModel(props.model));
     const isInCompare = computed(() => modelIds.value.includes(props.model.id));
@@ -64,7 +63,7 @@
         if (isInCompare.value) {
             removeModel(props.model.id);
         } else {
-            const result = addModel(props.model.id);
+            const result = addModel({ id: props.model.id, name: props.model.name, provider_id: props.model.provider_id });
             if (!result.added && result.reason === 'max') {
                 toast.add({
                     title: t('compare.maxReached'),

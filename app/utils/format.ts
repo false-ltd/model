@@ -43,3 +43,25 @@ export const dangerColor = () => getCSSVar("--color-danger");
 export const isVisionModel = (m: Model): boolean => m?.modalities_input?.includes("image") ?? false;
 
 export const isFreeModel = (m: Model): boolean => (m?.cost_input ?? 0) === 0 && (m?.cost_output ?? 0) === 0;
+
+/** Stable string hash → [0, 1) */
+const hash01String = (str: string): number => {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return ((h >>> 0) % 100000) / 100000;
+};
+
+/**
+ * Provider brand color: stable hue from the provider id spread across the
+ * full color wheel, with theme-aware saturation/lightness. Canvas and HTML
+ * legend must both use this so they never disagree.
+ */
+export const providerColor = (id: string, dark: boolean): string => {
+    const hue = Math.floor(hash01String(id) * 360);
+    return dark
+        ? `hsl(${hue}, 72%, 66%)`
+        : `hsl(${hue}, 68%, 44%)`;
+};

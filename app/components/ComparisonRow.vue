@@ -7,8 +7,13 @@
             class="border-r border-b border-default last:border-r-0 p-2.5 text-center transition-colors"
             :class="cellClass(m)"
         >
-            <template v-if="boolean">
-                <span class="text-sm" :class="m[fieldKey] ? 'text-success font-semibold' : 'text-muted'">{{ m[fieldKey] ? "✓" : "—" }}</span>
+            <template v-if="boolean || typeof m[fieldKey] === 'boolean'">
+                <UIcon
+                    v-if="m[fieldKey]"
+                    name="i-lucide-check"
+                    class="size-4 text-success"
+                />
+                <span v-else class="text-sm text-muted">—</span>
             </template>
             <template v-else-if="nested">
                 <span class="text-xs font-mono text-toned">{{ getNestedValue(m, fieldKey) || "—" }}</span>
@@ -31,7 +36,6 @@ const props = defineProps<{
     format?: (v: any) => string;
     boolean?: boolean;
     nested?: boolean;
-    monospace?: boolean;
     isBest?: (m: any, field: string) => boolean;
     bestClass?: string;
     bestLabel?: string;

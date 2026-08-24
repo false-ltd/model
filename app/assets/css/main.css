@@ -1,10 +1,14 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/space-grotesk";
+@import "@fontsource-variable/noto-sans-sc";
 @plugin "@tailwindcss/typography";
 
 /* ============================================
-   AI Model Catalog — Rose Design System
-   Uses Nuxt UI semantic classes + stone neutral
+   AI Model Atlas — Technical Editorial System
+   Space Grotesk display / Inter text,
+   stone neutral + amber accent, quiet motion.
    ============================================ */
 
 :root {
@@ -22,6 +26,9 @@
     /* Semantic colors */
     --color-success: #059669;
     --color-danger: #e11d48;
+
+    /* Motion */
+    --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .dark {
@@ -39,6 +46,10 @@
     --color-danger: #fb7185;
 }
 
+@utility font-display {
+    font-family: "Space Grotesk Variable", "Noto Sans SC Variable", "Inter Variable", -apple-system, sans-serif;
+}
+
 html {
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
@@ -48,6 +59,7 @@ html {
 body {
     font-family:
         "Inter Variable",
+        "Noto Sans SC Variable",
         "Inter",
         -apple-system,
         BlinkMacSystemFont,
@@ -57,6 +69,21 @@ body {
     transition:
         background-color 0.2s ease,
         color 0.2s ease;
+}
+
+/* Film grain — SVG turbulence, fixed overlay, never intercepts input */
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    pointer-events: none;
+    opacity: 0.032;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+}
+
+::selection {
+    background-color: color-mix(in oklab, var(--ui-primary) 25%, transparent);
 }
 
 ::-webkit-scrollbar {
@@ -110,24 +137,138 @@ table tbody td {
     padding: 0.5rem 0.25rem;
 }
 
+/* Catalog table density: compact mode tightens row rhythm */
+.density-compact table tbody td {
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+}
+
+/* Keyboard-focused row (j/k navigation in the catalog table) */
+tr.row-kb-focused td {
+    background-color: color-mix(in oklab, var(--ui-primary) 8%, transparent);
+}
+tr.row-kb-focused td:first-child {
+    box-shadow: inset 2.5px 0 0 var(--ui-primary);
+}
+
 /* Expand/collapse transition */
 .expand-enter-active,
 .expand-leave-active {
     transition: height 0.2s ease-in-out;
 }
 
-/* Compare bar slide-up */
-.slide-up-enter-active,
-.slide-up-leave-active {
-    transition: all 0.25s ease;
+/* Route transitions — fast, subtle, out-in (fallback when the View
+   Transitions API is unavailable) */
+.page-enter-active,
+.page-leave-active {
+    transition:
+        opacity 0.18s ease,
+        transform 0.18s var(--ease-out-quint);
 }
-.slide-up-enter-from,
-.slide-up-leave-to {
+.page-enter-from {
     opacity: 0;
-    transform: translate(-50%, 12px);
+    transform: translateY(10px);
 }
-.slide-up-enter-to,
-.slide-up-leave-from {
+.page-leave-to {
+    opacity: 0;
+    transform: translateY(-6px);
+}
+
+/* View Transitions API (html.vt is set by plugins/motion.client.ts) */
+html.vt .page-enter-active,
+html.vt .page-leave-active {
+    transition: none;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation-duration: 0.24s;
+    animation-timing-function: var(--ease-out-quint);
+}
+::view-transition-old(root) {
+    animation-name: vt-out;
+}
+::view-transition-new(root) {
+    animation-name: vt-in;
+}
+@keyframes vt-out {
+    to {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.996);
+    }
+}
+@keyframes vt-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(1.004);
+    }
+}
+
+/* Scroll-reveal (v-reveal directive) */
+.reveal {
+    opacity: 0;
+    transform: translateY(22px);
+    transition:
+        opacity 0.7s var(--ease-out-quint),
+        transform 0.7s var(--ease-out-quint);
+    transition-delay: var(--reveal-delay, 0ms);
+    will-change: opacity, transform;
+}
+.reveal-in {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: none;
+}
+
+/* Ambient hero backdrop — drifting gradient blobs + dot grid */
+@keyframes ambient-drift-a {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(4%, -3%, 0) scale(1.08); }
+}
+@keyframes ambient-drift-b {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); }
+    50% { transform: translate3d(-4%, 4%, 0) scale(0.96); }
+}
+.ambient-blob {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(90px);
+    pointer-events: none;
+}
+.ambient-blob-a {
+    animation: ambient-drift-a 26s ease-in-out infinite;
+}
+.ambient-blob-b {
+    animation: ambient-drift-b 32s ease-in-out infinite;
+}
+.ambient-grid {
+    background-image: radial-gradient(var(--ui-border-accented) 1px, transparent 1px);
+    background-size: 28px 28px;
+    -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 20%, black 30%, transparent 75%);
+    mask-image: radial-gradient(ellipse 90% 70% at 50% 20%, black 30%, transparent 75%);
+}
+
+/* Big animated numerals */
+.tabular {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+}
+
+/* Respect users who prefer stillness */
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+    .reveal {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+    .page-enter-active,
+    .page-leave-active {
+        transition: opacity 0.1s ease;
+        transform: none;
+    }
+    .ambient-blob-a,
+    .ambient-blob-b {
+        animation: none;
+    }
 }

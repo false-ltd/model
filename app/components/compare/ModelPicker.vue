@@ -11,7 +11,7 @@
                         class="w-full bg-elevated rounded-lg px-3 py-2 text-sm text-default border border-default focus:border-primary focus:outline-none"
                     />
                 </div>
-                <div class="max-h-65 overflow-y-auto">
+                <div data-lenis-prevent class="max-h-65 overflow-y-auto">
                     <div v-if="loading" class="p-4 text-center text-sm text-muted">...</div>
                     <div v-else-if="results.length === 0" class="p-4 text-center text-sm text-muted">
                         {{ t("common.noResults") }}
@@ -30,7 +30,7 @@
                                 {{ r.provider_id }} · {{ r.family }}
                             </div>
                         </div>
-                        <span v-if="modelIds.includes(r.id)" class="text-xs text-success">✓</span>
+                        <UIcon v-if="modelIds.includes(r.id)" name="i-lucide-check" class="size-3.5 text-success shrink-0" />
                     </button>
                 </div>
             </div>
@@ -43,10 +43,6 @@
         modelIds: number[];
     }>();
 
-    const emit = defineEmits<{
-        select: [id: number];
-    }>();
-
     const { t } = useI18n();
     const config = useRuntimeConfig();
     const { addModel } = useCompare();
@@ -55,28 +51,34 @@
     const results = ref<any[]>([]);
     const loading = ref(false);
     let timer: ReturnType<typeof setTimeout> | null = null;
+    // Guard against stale responses overwriting newer search results.
+    let requestSeq = 0;
 
     const selectModel = (r: any) => {
-        addModel(r.id);
+        addModel({ id: r.id, name: r.name, provider_id: r.provider_id });
     };
 
     watch(query, (q) => {
         if (timer) clearTimeout(timer);
         if (!q.trim()) {
+            requestSeq++;
             results.value = [];
             return;
         }
         timer = setTimeout(async () => {
+            const seq = ++requestSeq;
             loading.value = true;
             try {
                 const res = await $fetch<{ data: any[] }>(`${config.public.apiBase}/api/v1/models`, {
                     params: { q: q.trim(), page_size: 20 },
                 });
+                if (seq !== requestSeq) return;
                 results.value = res.data || [];
             } catch {
+                if (seq !== requestSeq) return;
                 results.value = [];
             } finally {
-                loading.value = false;
+                if (seq === requestSeq) loading.value = false;
             }
         }, 300);
     });

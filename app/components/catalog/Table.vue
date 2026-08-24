@@ -1,5 +1,5 @@
 <template>
-    <div class="border border-default rounded-xl">
+    <div ref="tableRoot" class="border border-default rounded-xl" :class="density === 'compact' ? 'density-compact' : ''">
         <UTable
             ref="table"
             sticky
@@ -44,12 +44,25 @@
                     </button>
                 </div>
             </div>
-            <UPagination
-                :page="currentPage"
-                :items-per-page="pageSize"
-                :total="totalItems"
-                @update:page="(p: number) => emit('goToPage', p)"
-            />
+            <div class="flex items-center gap-2">
+                <div class="flex items-center gap-0.5 bg-default border border-default rounded-md p-0.5" :title="t('catalog.density')">
+                    <button
+                        v-for="d in ['compact', 'cozy']"
+                        :key="d"
+                        @click="density = d"
+                        class="rounded px-1.5 py-0.5 cursor-pointer transition-colors"
+                        :class="density === d ? 'bg-primary text-white' : 'text-muted hover:text-default'"
+                    >
+                        <UIcon :name="d === 'compact' ? 'i-lucide-align-justify' : 'i-lucide-rows-3'" class="size-3" />
+                    </button>
+                </div>
+                <UPagination
+                    :page="currentPage"
+                    :items-per-page="pageSize"
+                    :total="totalItems"
+                    @update:page="(p: number) => emit('goToPage', p)"
+                />
+            </div>
         </div>
     </div>
 </template>
@@ -64,6 +77,26 @@
         if (!v) return "\u2014";
         const d = new Date(v);
         return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    };
+
+    // Split text into [text, isMatch] runs for search highlighting.
+    const highlightParts = (text: string, query?: string): any[] => {
+        const q = query?.trim().toLowerCase();
+        if (!q || !text) return text ?? "";
+        const lower = text.toLowerCase();
+        const out: any[] = [];
+        let i = 0;
+        while (i < text.length) {
+            const hit = lower.indexOf(q, i);
+            if (hit < 0) {
+                out.push(text.slice(i));
+                break;
+            }
+            if (hit > i) out.push(text.slice(i, hit));
+            out.push(h("mark", { class: "bg-primary/25 text-default rounded px-0.5" }, text.slice(hit, hit + q.length)));
+            i = hit + q.length;
+        }
+        return out;
     };
 
     const UCheckbox = resolveComponent("UCheckbox");
@@ -81,6 +114,7 @@
         totalPages: number;
         currentPage: number;
         pageSize: number;
+        query?: string;
     }>();
 
     const emit = defineEmits<{
@@ -94,6 +128,23 @@
     const { t } = useI18n();
     const toast = useToast();
     const table = useTemplateRef<any>("table");
+    const tableRoot = useTemplateRef<HTMLElement>("tableRoot");
+    const { isMobile } = useMobile();
+
+    const density = ref<"compact" | "cozy">(
+        ((): "compact" | "cozy" => {
+            try {
+                return localStorage.getItem("catalog-density") === "compact" ? "compact" : "cozy";
+            } catch {
+                return "cozy";
+            }
+        })(),
+    );
+    watch(density, (d) => {
+        try {
+            localStorage.setItem("catalog-density", d);
+        } catch {}
+    });
 
     const copiedId = ref("");
     const copyModelId = async (id: string) => {
@@ -111,6 +162,17 @@
             navigateTo(localePath(`/model/${row.original.id}`));
         }
     };
+
+    // Keyboard-focused row highlight (j/k).
+    const focusedIdx = ref(-1);
+    watch([focusedIdx, () => props.models.length], () => {
+        nextTick(() => {
+            const trs = tableRoot.value?.querySelectorAll("tbody tr") || [];
+            trs.forEach((tr, i) => tr.classList.toggle("row-kb-focused", i === focusedIdx.value));
+            const active = trs[focusedIdx.value];
+            if (active && focusedIdx.value >= 0) active.scrollIntoView({ block: "nearest" });
+        });
+    });
 
     const showMaxToast = () => {
         toast.add({
@@ -181,8 +243,11 @@
         };
 
     // Column definitions
-    const columns = computed<TableColumn<any>[]>(() => [
-        {
+    const columns = computed<TableColumn<any>[]>(() => {
+        // Cells close over props lazily; touch query here so the table
+        // rebuilds (and cells re-render with highlights) on search change.
+        void props.query;
+        return [{
             id: "name",
             accessorKey: "name",
             header: ({ column }: { column: { id: string } }) => sortHeader(column, t("catalog.colProviderModel")),
@@ -198,11 +263,11 @@
                                     modelIds.value.includes(m.id)
                                         ? removeModel(m.id)
                                         : (() => {
-                                              const result = addModel(m.id);
+                                              const result = addModel({ id: m.id, name: m.name, provider_id: m.provider_id });
                                               if (!result.added && result.reason === "max") showMaxToast();
                                           })();
                                 },
-                                "aria-label": "Select row",
+                                "aria-label": t("common.selectRow"),
                             }),
                         ]),
                     );
@@ -232,7 +297,7 @@
                             to: localePath(`/model/${m.id}`),
                             class: "font-medium text-default truncate no-underline hover:text-primary transition-colors",
                         },
-                        () => m.name,
+                        () => highlightParts(m.name, props.query),
                     ),
                 ];
                 const badges: any[] = [];
@@ -448,7 +513,8 @@
             cell: ({ row }: { row: any }) => h("span", { class: "text-toned" }, formatDate(row.original.last_updated)),
             size: 110,
         },
-    ]);
+    ];
+    });
 
     const columnPinning = ref<Record<string, string[]>>({ left: ["name"] });
 
@@ -464,7 +530,6 @@
         "knowledge",
         "last_updated",
     ];
-    const { isMobile } = useMobile();
     const STORAGE_KEY = "catalog-column-visibility";
 
     const loadColumnVisibility = (): Record<string, boolean> => {
@@ -491,6 +556,54 @@
     );
 
     onMounted(() => {
+        // Keep Lenis from hijacking wheel events over the table's own
+        // scroll container (sticky-header viewport scrolling). The wrapper
+        // is rendered asynchronously by the table primitive, so retry
+        // briefly instead of relying on nextTick.
+        const tagScrollLayer = (attempt = 0) => {
+            const el = tableRoot.value?.querySelector("[class*='overflow-auto']");
+            if (el) el.setAttribute("data-lenis-prevent", "");
+            else if (attempt < 10) setTimeout(() => tagScrollLayer(attempt + 1), 150);
+        };
+        tagScrollLayer();
+
+        // Keyboard flow: j/k move the focused row, x toggles compare,
+        // Enter/o opens the model. Inputs are exempt.
+        const onKeydown = (e: KeyboardEvent) => {
+            const el = e.target as HTMLElement;
+            if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+            if (e.metaKey || e.ctrlKey || e.altKey) return;
+            if (!props.models.length) return;
+
+            if (e.key === "j") {
+                e.preventDefault();
+                if (focusedIdx.value < 0) focusedIdx.value = 0;
+                else focusedIdx.value = Math.min(focusedIdx.value + 1, props.models.length - 1);
+            } else if (e.key === "k") {
+                e.preventDefault();
+                focusedIdx.value = Math.max(focusedIdx.value - 1, 0);
+            } else if (e.key === "x" && focusedIdx.value >= 0) {
+                e.preventDefault();
+                const m = props.models[focusedIdx.value];
+                if (!m) return;
+                if (modelIds.value.includes(m.id)) removeModel(m.id);
+                else {
+                    const result = addModel({ id: m.id, name: m.name, provider_id: m.provider_id });
+                    if (!result.added && result.reason === "max") showMaxToast();
+                }
+            } else if ((e.key === "Enter" || e.key === "o") && focusedIdx.value >= 0) {
+                const m = props.models[focusedIdx.value];
+                if (m?.id) {
+                    e.preventDefault();
+                    navigateTo(localePath(`/model/${m.id}`));
+                }
+            } else if (e.key === "Escape") {
+                focusedIdx.value = -1;
+            }
+        };
+        window.addEventListener("keydown", onKeydown);
+        onUnmounted(() => window.removeEventListener("keydown", onKeydown));
+
         if (isMobile.value) {
             columnPinning.value = { left: [] };
         }

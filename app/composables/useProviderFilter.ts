@@ -5,7 +5,8 @@ export async function useProviderFilter(selectedProviders: Ref<SelectItem[]>) {
     const route = useRoute()
     const config = useRuntimeConfig()
 
-    const { data: providers } = await useAsyncData('providers', () =>
+    // Same key as useProviders so both share one cached request.
+    const { data: providers } = await useAsyncData('providers-list', () =>
         $fetch<ApiResponse<Provider[]>>(`${config.public.apiBase}/api/v1/providers`),
     )
 
@@ -14,7 +15,7 @@ export async function useProviderFilter(selectedProviders: Ref<SelectItem[]>) {
     const providerSearch = ref('')
 
     const topProviders = computed(() =>
-        [...providersList.value].sort((a: Provider, b: Provider) => b.modelCount - a.modelCount).slice(0, 10),
+        [...providersList.value].sort((a: Provider, b: Provider) => b.model_count - a.model_count).slice(0, 10),
     )
 
     const groupedProviders = computed(() => {

@@ -21,7 +21,11 @@
                     >
                         <span class="rounded-full shrink-0" :class="layout === 'compact' ? 'size-1.5' : 'size-2'" :style="{ backgroundColor: colors[idx] }" />
                         <span v-if="layout !== 'compact'" class="text-muted min-w-0 truncate flex-1">{{ m.name }}</span>
-                        <span class="shrink-0" :class="valueClass(m, field)">{{ formatValue(m, field) }}</span>
+                        <template v-if="layout === 'compact' && typeof m[field.key] === 'boolean'">
+                            <UIcon v-if="m[field.key]" name="i-lucide-check" class="size-3.5 shrink-0 text-success" />
+                            <span v-else class="text-muted">—</span>
+                        </template>
+                        <span v-else class="shrink-0" :class="valueClass(m, field)">{{ formatValue(m, field) }}</span>
                     </div>
                 </div>
             </div>
@@ -57,7 +61,7 @@
     };
 
     const formatValue = (m: any, field: { key: string; format?: (v: any) => string }) => {
-        if (props.layout === "compact") return m[field.key] ? "✓" : "—";
+        if (props.layout === "compact") return m[field.key] ? "" : "—";
         return field.format ? field.format(m[field.key]) : (m[field.key] ?? "—");
     };
 </script>

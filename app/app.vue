@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import * as locales from '@nuxt/ui/locale'
+import { en, zh_cn } from '@nuxt/ui/locale'
 
 const { locale } = useI18n()
 const { t } = useI18n()
+
+const uiLocales: Record<string, typeof en> = { en, zh: zh_cn }
 
 useHead({
     htmlAttrs: { lang: locale },
@@ -29,7 +31,9 @@ useHead({
 </script>
 
 <template>
-    <UApp :locale="locales[locale]">
+    <UApp :locale="uiLocales[locale] ?? en">
+        <NuxtLoadingIndicator />
+        <IntroOverlay />
         <NuxtLayout>
             <NuxtPage />
         </NuxtLayout>

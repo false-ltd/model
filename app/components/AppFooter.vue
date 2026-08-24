@@ -11,6 +11,15 @@
                     models.dev
                     <UIcon name="i-lucide-external-link" class="size-2.5 align-[-1px] ml-0.5" />
                 </NuxtLink>
+                <span class="text-muted/50 mx-0.5">·</span>
+                <NuxtLink
+                    to="https://false.ltd"
+                    target="_blank"
+                    class="inline-flex items-center gap-0.5 text-toned hover:text-primary transition-colors no-underline"
+                >
+                    False
+                    <UIcon name="i-lucide-arrow-up-right" class="size-3" />
+                </NuxtLink>
             </div>
         </template>
 

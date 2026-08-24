@@ -5,31 +5,9 @@
                 <div class="text-sm font-semibold text-default">{{ title }}</div>
                 <div class="text-xs text-muted">{{ subtitle }}</div>
             </div>
-            <div v-if="tabs?.length" class="flex gap-1">
-                <button
-                    v-for="tab in tabs"
-                    :key="tab.key"
-                    @click="$emit('tabChange', tab.key)"
-                    class="rounded-md px-2 py-0.5 text-[10px] cursor-pointer transition-colors"
-                    :class="
-                        activeTab === tab.key
-                            ? 'bg-primary text-white'
-                            : 'bg-elevated text-toned hover:bg-accented'
-                    "
-                >
-                    {{ tab.label }}
-                </button>
-            </div>
         </div>
         <div style="height: 180px; position: relative">
             <canvas ref="canvasRef" />
-        </div>
-        <div
-            v-if="linkText"
-            class="mt-2.5 text-center text-xs text-primary cursor-pointer hover:underline"
-            @click="$emit('navigate')"
-        >
-            {{ linkText }}
         </div>
     </div>
 </template>
@@ -58,14 +36,6 @@ const props = defineProps<{
     title: string;
     subtitle: string;
     items: ChartItem[];
-    tabs?: { key: string; label: string }[];
-    activeTab?: string;
-    linkText?: string;
-}>();
-
-defineEmits<{
-    tabChange: [key: string];
-    navigate: [];
 }>();
 
 const { canvasRef } = useChart(

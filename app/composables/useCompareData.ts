@@ -11,7 +11,7 @@ export function useCompareData(compareModels: Ref<Model[]>) {
         { key: "model_id", label: t("compare.modelId") },
         { key: "name", label: t("compare.name") },
         { key: "family", label: t("compare.family") },
-        { key: "open_weights", label: t("compare.openWeights"), format: (v: boolean) => (v ? "✓" : "—") },
+        { key: "open_weights", label: t("compare.openWeights") },
     ]);
 
     const pricingFields = computed(() => [
@@ -52,10 +52,10 @@ export function useCompareData(compareModels: Ref<Model[]>) {
     ]);
 
     const integrationFields = computed(() => [
-        { key: "providers.name", label: t("detail.provider") },
-        { key: "providers.npm", label: t("detail.npmPackage") },
-        { key: "providers.api", label: t("detail.apiEndpoint") },
-        { key: "providers.env.0", label: t("detail.envVariable") },
+        { key: "provider.name", label: t("detail.provider") },
+        { key: "provider.npm", label: t("detail.npmPackage") },
+        { key: "provider.api_url", label: t("detail.apiEndpoint") },
+        { key: "provider.env.0", label: t("detail.envVariable") },
     ]);
 
     const hasPaidModels = computed(() =>

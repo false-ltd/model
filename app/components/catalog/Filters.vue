@@ -21,14 +21,16 @@
                 </UButton>
             </div>
         </div>
-        <UInput
-            :model-value="search"
-            @update:model-value="(v: string) => emit('update:search', v)"
-            :placeholder="$t('search.placeholder')"
-            icon="i-lucide-search"
-            size="lg"
-            class="w-full mb-4"
-        />
+        <div ref="searchWrap">
+            <UInput
+                :model-value="search"
+                @update:model-value="(v: string) => emit('update:search', v)"
+                :placeholder="$t('search.placeholder')"
+                icon="i-lucide-search"
+                size="lg"
+                class="w-full mb-4"
+            />
+        </div>
     </template>
 
     <!-- Desktop: Row 1 — Title + Search + Column visibility -->
@@ -38,6 +40,7 @@
                 {{ $t("catalog.title") }}
                 <span class="text-sm font-normal text-muted ml-1">{{ total }} {{ $t("nav.catalog") }}</span>
             </h1>
+            <div ref="searchWrap">
             <UInput
                 :model-value="search"
                 @update:model-value="(v: string) => emit('update:search', v)"
@@ -57,6 +60,7 @@
                     />
                 </template>
             </UInput>
+            </div>
             <UDropdownMenu
                 v-if="columnMenuItems.length"
                 :items="[columnMenuItems]"
@@ -66,18 +70,18 @@
             </UDropdownMenu>
         </div>
 
-        <!-- Desktop: Row 2 — All filters in one line -->
-        <div class="flex flex-wrap items-center gap-2 mb-4">
-            <UButton
-                v-for="toggle in filterToggles"
-                :key="toggle.key"
-                @click="$emit('toggleFilter', toggle.key)"
-                :icon="toggle.icon"
-                :label="toggle.label"
-                :color="filters[toggle.key] ? toggle.color : 'neutral'"
-                :variant="filters[toggle.key] ? 'soft' : 'outline'"
-                size="sm"
-            />
+    <!-- Desktop: Row 2 — All filters in one line -->
+    <div class="flex flex-wrap items-center gap-2 mb-4">
+        <UButton
+            v-for="toggle in filterToggles"
+            :key="toggle.key"
+            @click="$emit('toggleFilter', toggle.key)"
+            :icon="toggle.icon"
+            :label="toggle.label"
+            :color="filters[toggle.key] ? toggle.color : 'neutral'"
+            :variant="filters[toggle.key] ? 'soft' : 'outline'"
+            size="sm"
+        />
 
             <span class="text-muted text-sm select-none">|</span>
 
@@ -191,6 +195,28 @@
                 />
             </template>
         </div>
+
+        <!-- Active filter chips: the current view at a glance, each removable -->
+        <div v-if="activeChips.length" class="flex flex-wrap items-center gap-1.5 mb-4" data-lenis-prevent>
+            <span class="text-[11px] text-muted uppercase tracking-wider font-medium mr-0.5">{{ $t("catalog.activeFilters") }}</span>
+            <button
+                v-for="chip in activeChips"
+                :key="chip.key"
+                class="group inline-flex items-center gap-1 rounded-full border border-default bg-elevated pl-2.5 pr-1 py-0.5 text-xs text-toned cursor-pointer hover:border-error/50 hover:text-default transition-colors"
+                @click="chip.remove"
+            >
+                <UIcon v-if="chip.icon" :name="chip.icon" class="size-3 text-primary" />
+                <span class="max-w-40 truncate">{{ chip.label }}</span>
+                <UIcon name="i-lucide-x" class="size-3 text-muted group-hover:text-error transition-colors" />
+            </button>
+            <button
+                v-if="activeChips.length > 1"
+                class="text-xs text-muted hover:text-error cursor-pointer transition-colors ml-1"
+                @click="clearAllFilters"
+            >
+                {{ $t("common.clearAll") }}
+            </button>
+        </div>
     </template>
 
     <!-- Mobile: Expandable filter panel -->
@@ -285,7 +311,7 @@
         search: string;
         total: number;
         columnMenuItems: any[];
-        filterToggles: { key: string; label: string; icon: string; color: string; default?: boolean }[];
+        filterToggles: { key: string; label: string; icon: string; color: string }[];
         filters: Record<string, boolean>;
         selectedProviders: any[];
         topProviders: any[];
@@ -312,6 +338,7 @@
     }>();
 
     const { isMobile } = useMobile();
+    const { t: t2 } = useI18n();
     const filtersOpen = ref(false);
 
     const modalityBtnClass = (type: string) => modalityClass(type);
@@ -333,7 +360,6 @@
         }
     };
 
-    const capabilityCount = computed(() => Object.values(props.filters).filter(Boolean).length);
     const priceActive = computed(() => {
         const pr = priceRange.value || [0, 100];
         const opr = outputPriceRange.value || [0, 100];
@@ -349,6 +375,94 @@
         count += (selectedOutputTypes.value?.length || 0);
         if (priceActive.value) count++;
         return count;
+    });
+
+    interface FilterChip {
+        key: string;
+        icon?: string;
+        label: string;
+        remove: () => void;
+    }
+
+    const activeChips = computed<FilterChip[]>(() => {
+        const chips: FilterChip[] = [];
+        if (props.search.trim()) {
+            chips.push({
+                key: "search",
+                icon: "i-lucide-search",
+                label: props.search.trim(),
+                remove: () => emit("update:search", ""),
+            });
+        }
+        for (const toggle of props.filterToggles) {
+            if (props.filters[toggle.key]) {
+                chips.push({
+                    key: `f-${toggle.key}`,
+                    icon: toggle.icon,
+                    label: toggle.label,
+                    remove: () => emit("toggleFilter", toggle.key),
+                });
+            }
+        }
+        for (const sp of props.selectedProviders) {
+            chips.push({
+                key: `p-${typeof sp === "string" ? sp : sp.value}`,
+                icon: "i-lucide-building-2",
+                label: typeof sp === "string" ? sp : sp.label,
+                remove: () => emit("removeProvider", sp),
+            });
+        }
+        for (const it of selectedInputTypes.value || []) {
+            const v = typeof it === "string" ? it : it.value;
+            chips.push({
+                key: `in-${v}`,
+                icon: modalityIcon(v),
+                label: `${t2("catalog.inputType")}: ${v}`,
+                remove: () => toggleInputType(v),
+            });
+        }
+        for (const ot of selectedOutputTypes.value || []) {
+            const v = typeof ot === "string" ? ot : ot.value;
+            chips.push({
+                key: `out-${v}`,
+                icon: modalityIcon(v),
+                label: `${t2("catalog.outputType")}: ${v}`,
+                remove: () => toggleOutputType(v),
+            });
+        }
+        const pr = priceRange.value || [0, 100];
+        if (pr[0] !== 0 || pr[1] !== 100) {
+            chips.push({
+                key: "price-in",
+                icon: "i-lucide-dollar-sign",
+                label: `$${pr[0]}–$${pr[1]}`,
+                remove: () => (priceRange.value = [0, 100]),
+            });
+        }
+        const opr = outputPriceRange.value || [0, 100];
+        if (opr[0] !== 0 || opr[1] !== 100) {
+            chips.push({
+                key: "price-out",
+                icon: "i-lucide-coins",
+                label: `${t2("catalog.colOutputCost")} $${opr[0]}–$${opr[1]}`,
+                remove: () => (outputPriceRange.value = [0, 100]),
+            });
+        }
+        return chips;
+    });
+
+    // "/" focuses the catalog search from anywhere on the page.
+    const searchWrap = useTemplateRef<HTMLElement>("searchWrap");
+    onMounted(() => {
+        const onKeydown = (e: KeyboardEvent) => {
+            if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+            const el = e.target as HTMLElement;
+            if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+            e.preventDefault();
+            searchWrap.value?.querySelector("input")?.focus();
+        };
+        window.addEventListener("keydown", onKeydown);
+        onUnmounted(() => window.removeEventListener("keydown", onKeydown));
     });
 
     const clearAllFilters = () => {

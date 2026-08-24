@@ -9,7 +9,7 @@
             <NuxtLink
                 :to="localePath(`/catalog?providers=${model.provider_id}`)"
                 class="text-toned hover:text-primary transition-colors"
-                >{{ model.providers?.name }}</NuxtLink
+                >{{ model.provider?.name }}</NuxtLink
             >
             <span class="mx-1.5">/</span>
             <span class="text-default font-medium">{{ model.name }}</span>
@@ -43,7 +43,7 @@
                 <div class="flex items-center gap-2 flex-wrap">
                     <div class="inline-flex items-center gap-2 px-3 py-1 bg-elevated border border-default rounded-full">
                         <ProviderLogo :provider-id="model.provider_id" cls="size-4 rounded" />
-                        <span class="text-xs font-mono text-muted">{{ model.providers?.name }}</span>
+                        <span class="text-xs font-mono text-muted">{{ model.provider?.name }}</span>
                     </div>
                     <span v-if="model.family" class="text-xs text-muted">/</span>
                     <span v-if="model.family" class="text-xs font-mono text-muted">{{ model.family }}</span>
@@ -75,16 +75,46 @@
 
             <div class="flex items-center gap-2 shrink-0">
                 <button
-                    @click="isInCompare ? removeModel(model.id) : addModel(model.id)"
+                    :title="t('detail.share')"
+                    class="size-9 flex items-center justify-center rounded-lg border border-default bg-elevated text-toned hover:text-primary hover:border-primary/50 transition-colors cursor-pointer"
+                    @click="copyLink"
+                >
+                    <UIcon :name="linkCopied ? 'i-lucide-check' : 'i-lucide-share-2'" class="size-4" :class="linkCopied ? 'text-success' : ''" />
+                </button>
+                <div class="flex items-center rounded-lg border border-default overflow-hidden">
+                    <button
+                        v-if="prevModel"
+                        :title="`${t('detail.prevModel')}: ${prevModel.name}`"
+                        class="size-9 flex items-center justify-center bg-elevated text-toned hover:text-primary hover:bg-accented transition-colors cursor-pointer"
+                        @click="goSibling(prevModel.id)"
+                    >
+                        <UIcon name="i-lucide-arrow-left" class="size-4" />
+                    </button>
+                    <button
+                        v-if="nextModel"
+                        :title="`${t('detail.nextModel')}: ${nextModel.name}`"
+                        class="size-9 flex items-center justify-center bg-elevated text-toned border-l border-default hover:text-primary hover:bg-accented transition-colors cursor-pointer"
+                        @click="goSibling(nextModel.id)"
+                    >
+                        <UIcon name="i-lucide-arrow-right" class="size-4" />
+                    </button>
+                </div>
+                <button
+                    @click="
+                        isInCompare
+                            ? removeModel(model.id)
+                            : addModel({ id: model.id, name: model.name, provider_id: model.provider_id })
+                    "
                     class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border text-sm font-medium cursor-pointer transition-all active:scale-95"
                     :class="isInCompare ? 'bg-primary text-white border-primary' : 'bg-elevated text-toned border-default hover:border-primary hover:text-primary'"
                 >
                     <UIcon name="i-lucide-git-compare" class="size-3.5" />
-                    {{ isInCompare ? "✓" : "+" }} {{ t("common.compare") }}
+                    <UIcon :name="isInCompare ? 'i-lucide-check' : 'i-lucide-plus'" class="size-3.5" />
+                    {{ t("common.compare") }}
                 </button>
                 <a
-                    v-if="model.providers?.doc_url"
-                    :href="model.providers.doc_url"
+                    v-if="model.provider?.doc_url"
+                    :href="model.provider.doc_url"
                     target="_blank"
                     class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-elevated text-toned text-sm font-medium no-underline hover:bg-accented transition-all active:scale-95"
                 >
@@ -93,8 +123,8 @@
                     <UIcon name="i-lucide-external-link" class="size-3" />
                 </a>
                 <a
-                    v-if="model.providers?.api_url"
-                    :href="model.providers.api_url"
+                    v-if="model.provider?.api_url"
+                    :href="model.provider.api_url"
                     target="_blank"
                     class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-elevated text-toned text-sm font-medium no-underline hover:bg-accented transition-all active:scale-95"
                 >
@@ -131,6 +161,17 @@
                     <UIcon name="i-lucide-dollar-sign" class="size-3.5 text-primary" />
                     {{ t("detail.pricing") }}
                     <span class="normal-case tracking-normal text-muted/60">{{ t("detail.perMTokens") }}</span>
+                    <div v-if="priceBadges.length" class="ml-auto flex flex-wrap gap-1.5 normal-case tracking-normal">
+                        <span
+                            v-for="badge in priceBadges"
+                            :key="badge.label"
+                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border"
+                            :class="badge.cls"
+                        >
+                            <UIcon :name="badge.icon" class="size-3" />
+                            {{ badge.label }}
+                        </span>
+                    </div>
                 </div>
                 <div class="flex-1 min-h-0">
                     <ModelPriceGauge :fields="pricingFields" />
@@ -141,6 +182,13 @@
                 <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted mb-5">
                     <UIcon name="i-lucide-gauge" class="size-3.5 text-primary" />
                     {{ t("detail.limits") }}
+                    <span
+                        v-if="ctxPercentile != null"
+                        class="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border border-default bg-elevated text-toned normal-case tracking-normal"
+                    >
+                        <UIcon name="i-lucide-trending-up" class="size-3 text-primary" />
+                        {{ t("detail.ctxBeats", { p: ctxPercentile }) }}
+                    </span>
                 </div>
                 <div class="flex-1 min-h-0">
                     <ModelLimitGauge
@@ -235,20 +283,20 @@
                         {{ t("detail.integration") }}
                     </div>
 
-                    <div v-if="model.providers?.npm">
+                    <div v-if="model.provider?.npm">
                         <div class="text-xs text-muted mb-2 uppercase tracking-wider">{{ t("detail.npmPackage") }}</div>
                         <div class="flex items-center gap-2 bg-elevated border border-default rounded-lg px-3 py-2 group/npm hover:border-primary/30 transition-colors">
                             <UIcon name="i-lucide-package" class="size-3.5 text-muted group-hover/npm:text-success transition-colors shrink-0" />
-                            <code class="text-xs font-mono text-success flex-1 truncate">{{ model.providers.npm }}</code>
-                            <CopyButton :value="model.providers.npm" />
+                            <code class="text-xs font-mono text-success flex-1 truncate">{{ model.provider.npm }}</code>
+                            <CopyButton :value="model.provider.npm" />
                         </div>
                     </div>
 
-                    <div v-if="model.providers?.env?.length" :class="model.providers?.npm ? 'mt-4' : ''">
+                    <div v-if="model.provider?.env?.length" :class="model.provider?.npm ? 'mt-4' : ''">
                         <div class="text-xs text-muted mb-2 uppercase tracking-wider">{{ t("detail.envVariable") }}</div>
                         <div class="space-y-1">
                             <div
-                                v-for="envKey in model.providers.env"
+                                v-for="envKey in model.provider.env"
                                 :key="envKey"
                                 class="font-mono text-xs text-primary dark:text-primary bg-primary/5 border border-primary/20 rounded px-2 py-1 cursor-pointer hover:bg-primary/10 transition-colors"
                                 @click="copyEnvVar(envKey)"
@@ -276,7 +324,7 @@
                 <UIcon name="i-lucide-layers" class="size-3.5 text-primary" />
                 {{ t("detail.similarModels") }}
                 <span class="normal-case tracking-normal text-muted/60">
-                    {{ t("detail.similarModelsSub", { provider: model.providers?.name }) }}
+                    {{ t("detail.similarModelsSub", { provider: model.provider?.name }) }}
                 </span>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
@@ -285,12 +333,13 @@
                 </TransitionGroup>
             </div>
         </section>
-
-        <CompareFab />
     </div>
 </template>
 
 <script setup lang="ts">
+    // Retrigger the page transition when navigating between model pages.
+    definePageMeta({ key: (route) => route.fullPath });
+
     const localePath = useLocalePath();
     const { modelIds, addModel, removeModel } = useCompare();
     const { t } = useI18n();
@@ -298,11 +347,11 @@
     const { model, pricingFields } = await useModelDetail();
 
     useSeoMeta({
-        title: () => t("seo.detailTitle", { name: model.value?.name || "", provider: model.value?.providers?.name || "" }),
-        ogTitle: () => t("seo.detailTitle", { name: model.value?.name || "", provider: model.value?.providers?.name || "" }),
-        description: () => t("seo.detailDescription", { name: model.value?.name || "", provider: model.value?.providers?.name || "" }),
-        ogDescription: () => t("seo.detailDescription", { name: model.value?.name || "", provider: model.value?.providers?.name || "" }),
-        keywords: () => t("seo.detailKeywords", { name: model.value?.name || "", provider: model.value?.providers?.name || "" }),
+        title: () => t("seo.detailTitle", { name: model.value?.name || "", provider: model.value?.provider?.name || "" }),
+        ogTitle: () => t("seo.detailTitle", { name: model.value?.name || "", provider: model.value?.provider?.name || "" }),
+        description: () => t("seo.detailDescription", { name: model.value?.name || "", provider: model.value?.provider?.name || "" }),
+        ogDescription: () => t("seo.detailDescription", { name: model.value?.name || "", provider: model.value?.provider?.name || "" }),
+        keywords: () => t("seo.detailKeywords", { name: model.value?.name || "", provider: model.value?.provider?.name || "" }),
         twitterCard: "summary",
     });
 
@@ -314,7 +363,7 @@
     );
 
     const hasIntegration = computed(() =>
-        !!(model.value?.providers?.npm || model.value?.providers?.env?.length),
+        !!(model.value?.provider?.npm || model.value?.provider?.env?.length),
     );
 
     const modelIdCopied = ref(false);
@@ -363,18 +412,95 @@
     });
 
     const config = useRuntimeConfig();
+
+    // ---- reference context vs the whole catalog (shared stats cache) ----
+    const { data: statsResult } = await useAsyncData("overview-stats", () =>
+        $fetch<any>(`${config.public.apiBase}/api/v1/stats`),
+    );
+
+    const priceBadges = computed<{ label: string; cls: string; icon: string }[]>(() => {
+        const stats = statsResult.value?.data?.stats;
+        if (!stats?.medianInputPrice) return [];
+        const badges: { label: string; cls: string; icon: string }[] = [];
+        const ratio = (cost: number | null, median: number) =>
+            cost == null || cost === 0 || !median ? null : cost / median;
+        const tone = (r: number | null) =>
+            r == null
+                ? null
+                : r <= 0.5
+                  ? { cls: "bg-success/10 border-success/30 text-success", icon: "i-lucide-trending-down" }
+                  : r <= 2
+                    ? { cls: "bg-elevated border-default text-toned", icon: "i-lucide-equal" }
+                    : { cls: "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400", icon: "i-lucide-trending-up" };
+
+        const rIn = ratio(model.value?.cost_input ?? null, stats.medianInputPrice);
+        const tIn = tone(rIn);
+        if (tIn) {
+            badges.push({
+                label:
+                    rIn! <= 2
+                        ? `${t("detail.inputPrice")} ${rIn! <= 0.5 ? t("detail.belowMedian") : t("detail.nearMedian")}`
+                        : t("detail.aboveMedian", { field: t("detail.inputPrice"), ratio: rIn!.toFixed(1) }),
+                ...tIn,
+            });
+        }
+        // Output median isn't in stats; derive an approximate tone from input ratio only.
+        return badges;
+    });
+
+    const ctxPercentile = computed<number | null>(() => {
+        const dist: { limit_context: number }[] = statsResult.value?.data?.contextDistribution || [];
+        const ctx = model.value?.limit_context;
+        if (!dist.length || !ctx) return null;
+        const below = dist.filter((d) => d.limit_context < ctx).length;
+        return Math.round((below / dist.length) * 100);
+    });
+
+    // ---- same-provider prev/next navigation ----
     const { data: similarResult } = await useAsyncData(
         `similar-${model.value?.provider_id}`,
         () =>
             $fetch<any>(`${config.public.apiBase}/api/v1/models`, {
-                params: { providers: model.value?.provider_id, page_size: 5 },
+                params: { providers: model.value?.provider_id, page_size: 24, sort: "name", order: "asc" },
             }),
         { watch: [() => model.value?.provider_id] },
     );
-    const similarModels = computed(() => {
-        const list = similarResult.value?.data ?? [];
-        return list.filter((m: any) => m.id !== model.value?.id).slice(0, 4);
+    const siblingCycle = computed(() => {
+        const list = (similarResult.value?.data ?? []).filter((m: any) => m.id !== model.value?.id);
+        return list;
     });
+    const prevModel = computed(() => {
+        if (!siblingCycle.value.length) return null;
+        const cur = model.value;
+        const before = siblingCycle.value.filter((m: any) => m.name < (cur?.name ?? ""));
+        return before.length ? before[before.length - 1] : siblingCycle.value[siblingCycle.value.length - 1];
+    });
+    const nextModel = computed(() => {
+        if (!siblingCycle.value.length) return null;
+        const cur = model.value;
+        const after = siblingCycle.value.filter((m: any) => m.name > (cur?.name ?? ""));
+        return after.length ? after[0] : siblingCycle.value[0];
+    });
+    const goSibling = (id: number) => navigateTo(localePath(`/model/${id}`));
+    const linkCopied = ref(false);
+    const copyLink = async () => {
+        try {
+            await navigator.clipboard.writeText(window.location.href);
+            linkCopied.value = true;
+            setTimeout(() => (linkCopied.value = false), 2000);
+        } catch {}
+    };
+    onMounted(() => {
+        const onKeydown = (e: KeyboardEvent) => {
+            const el = e.target as HTMLElement;
+            if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+            if (e.key === "ArrowLeft" && prevModel.value) goSibling(prevModel.value.id);
+            if (e.key === "ArrowRight" && nextModel.value) goSibling(nextModel.value.id);
+        };
+        window.addEventListener("keydown", onKeydown);
+        onUnmounted(() => window.removeEventListener("keydown", onKeydown));
+    });
+    const similarModels = computed(() => siblingCycle.value.slice(0, 4));
 
     const capabilityItems = computed(() => [
         { key: "reasoning", label: t("detail.reasoning"), value: model.value?.reasoning },

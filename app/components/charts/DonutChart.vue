@@ -34,6 +34,7 @@ const props = defineProps<{
     subtitle: string;
     segments: Segment[];
     total: number;
+    centerLabel?: string;
 }>();
 
 const pct = (count: number) => (props.total > 0 ? Math.round((count / props.total) * 100) : 0);
@@ -86,7 +87,7 @@ const { canvasRef } = useChart(
                         ctx.fillText(String(props.total), width / 2, height / 2 - 8);
                         ctx.font = chartFont("normal", 10);
                         ctx.fillStyle = c.text;
-                        ctx.fillText("models", width / 2, height / 2 + 10);
+                        ctx.fillText(props.centerLabel ?? "models", width / 2, height / 2 + 10);
                         ctx.restore();
                     },
                 },

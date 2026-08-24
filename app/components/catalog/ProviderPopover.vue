@@ -13,7 +13,10 @@
         </UButton>
 
         <template #content>
-            <div class="w-96 max-h-105 overflow-y-auto bg-default border border-default rounded-xl shadow-lg">
+            <div
+                data-lenis-prevent
+                class="w-96 max-h-105 overflow-y-auto bg-default border border-default rounded-xl shadow-lg"
+            >
                 <div class="sticky top-0 bg-default px-2 pt-2 pb-1.5 z-10">
                     <UInput
                         v-model="providerSearch"
@@ -77,7 +80,7 @@
                                 >
                                     {{ (p as any).name }}
                                 </span>
-                                <span class="text-xs text-muted tabular-nums">{{ (p as any).modelCount }}</span>
+                                <span class="text-xs text-muted tabular-nums">{{ (p as any).model_count }}</span>
                                 <UIcon v-if="isSelected(p)" name="i-lucide-check" class="size-3.5 text-primary shrink-0" />
                             </button>
                         </div>
@@ -108,7 +111,7 @@
                                 >
                                     {{ (p as any).name }}
                                 </span>
-                                <span class="text-xs text-muted tabular-nums">{{ (p as any).modelCount }}</span>
+                                <span class="text-xs text-muted tabular-nums">{{ (p as any).model_count }}</span>
                                 <UIcon v-if="isSelected(p)" name="i-lucide-check" class="size-3.5 text-primary shrink-0" />
                             </button>
                         </template>
@@ -132,7 +135,7 @@
                             >
                                 {{ (p as any).name }}
                             </span>
-                            <span class="text-xs text-muted tabular-nums">{{ (p as any).modelCount }}</span>
+                            <span class="text-xs text-muted tabular-nums">{{ (p as any).model_count }}</span>
                             <UIcon v-if="isSelected(p)" name="i-lucide-check" class="size-3.5 text-primary shrink-0" />
                         </button>
                         <div v-if="!filteredProviders.length" class="py-6 text-center text-sm text-muted">

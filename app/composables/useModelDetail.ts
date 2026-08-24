@@ -7,18 +7,24 @@ export async function useModelDetail() {
 
     const modelId = Number(route.params.modelId);
 
-    const { data: result } = await useAsyncData(`model-${modelId}`, () =>
+    const { data: result, error } = await useAsyncData(`model-${modelId}`, () =>
         $fetch<ApiResponse<Model>>(`${config.public.apiBase}/api/v1/models/${modelId}`),
     );
 
-    const model = computed(() => result.value?.data ?? null);
-
-    if (!result.value?.data) {
-        throw createError({ statusCode: 404, statusMessage: "Model not found" });
+    // Distinguish "model does not exist" from transport/server failures —
+    // the latter must not be reported as 404.
+    if (error.value) {
+        const statusCode = (error.value as any)?.statusCode ?? (error.value as any)?.status;
+        if (statusCode === 404) {
+            throw createError({ statusCode: 404, statusMessage: "Model not found" });
+        }
+        throw createError({ statusCode: 500, statusMessage: t("common.loadError") });
     }
 
+    const model = computed(() => result.value?.data ?? null);
+
     const pricingFields = computed((): PricingField[] => {
-        const m = model.value;
+        const m = model.value!;
         const fields = [
             { key: "input", label: t("detail.inputPrice"), value: m.cost_input, display: m.cost_input != null ? `$${m.cost_input}` : "—" },
             { key: "output", label: t("detail.outputPrice"), value: m.cost_output, display: m.cost_output != null ? `$${m.cost_output}` : "—" },
@@ -36,11 +42,5 @@ export async function useModelDetail() {
         return fields;
     });
 
-    const quickStartCode = computed(() => {
-        const npm = model.value?.providers?.npm || "";
-        const importName = npm.replace("@ai-sdk/", "");
-        return `import { ${importName} } from '${npm}';\n\nconst model = ${importName}('${model.value?.model_id}');`;
-    });
-
-    return { model, pricingFields, quickStartCode };
+    return { model, pricingFields };
 }

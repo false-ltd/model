@@ -1,5 +1,9 @@
-/** Standard animation config for all charts */
-export const chartAnimation = { duration: 600, easing: "easeOutQuart" as const };
+/** Standard animation config for all charts — elements stagger in */
+export const chartAnimation = {
+    duration: 850,
+    easing: "easeOutQuint" as const,
+    delay: (ctx: any) => (ctx.type === "data" && ctx.mode === "default" ? ctx.dataIndex * 55 : 0),
+};
 
 /** Standard font family for all chart text */
 export const chartFontFamily = "Inter, -apple-system, BlinkMacSystemFont, sans-serif";

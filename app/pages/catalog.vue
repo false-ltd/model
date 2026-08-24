@@ -46,13 +46,12 @@
                 :total-pages="catalogData.meta.total_pages"
                 :current-page="currentPage"
                 :page-size="catalogData.meta.page_size"
+                :query="searchQuery"
                 @sort="toggleSort"
                 @go-to-page="goToPage"
                 @change-page-size="changePageSize"
             />
         </Transition>
-
-        <CompareFab />
     </div>
 </template>
 

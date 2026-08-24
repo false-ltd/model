@@ -5,8 +5,7 @@ export interface Provider {
     env?: string[];
     doc_url?: string;
     api_url?: string;
-    api?: string;
-    modelCount: number;
+    model_count: number;
 }
 
 export interface Model {
@@ -15,7 +14,7 @@ export interface Model {
     model_id: string;
     family: string | null;
     provider_id: string;
-    providers: Provider | null;
+    provider: Provider | null;
     reasoning: boolean;
     tool_call: boolean;
     attachment: boolean;

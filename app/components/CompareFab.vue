@@ -41,7 +41,7 @@
                         </div>
 
                         <!-- Model list -->
-                        <div class="py-1 max-h-60 overflow-y-auto">
+                        <div data-lenis-prevent class="py-1 max-h-60 overflow-y-auto">
                             <div
                                 v-for="m in selectedModels"
                                 :key="m.id"
@@ -50,11 +50,11 @@
                                 <div
                                     class="w-7 h-7 rounded-full bg-elevated shrink-0 flex items-center justify-center text-[10px] font-bold text-muted relative overflow-hidden"
                                 >
-                                    <span>{{ m.provider_id?.charAt(0).toUpperCase() }}</span>
+                                    <span>{{ m.provider_id?.charAt(0).toUpperCase() || "·" }}</span>
                                     <ProviderLogo :provider-id="m.provider_id" cls="absolute inset-0 w-full h-full object-cover rounded-full" />
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <div class="text-xs font-medium text-default truncate">{{ m.name }}</div>
+                                    <div class="text-xs font-medium text-default truncate">{{ m.name || `#${m.id}` }}</div>
                                     <div class="text-[10px] text-muted">{{ m.provider_id }}</div>
                                 </div>
                                 <button
@@ -91,23 +91,28 @@
     const localePath = useLocalePath();
     const config = useRuntimeConfig();
     const { t } = useI18n();
-    const { modelIds, removeModel, clearAll } = useCompare();
+    const { modelIds, selectedModels, removeModel, clearAll, patchModel } = useCompare();
 
     const open = ref(false);
 
-    const modelIdsKey = computed(() => [...modelIds.value].sort().join(","));
-    const { data: result } = await useAsyncData(
-        "compare-bar-models",
-        () => {
-            if (!modelIds.value.length) return Promise.resolve({ data: [] });
-            return $fetch<{ data: any[] }>(`${config.public.apiBase}/api/v1/compare`, {
-                params: { ids: modelIds.value.join(",") },
-            });
+    // Selections restored from a bare ?models= id list carry no name; fetch
+    // them once. Regular adds already carry a snapshot, so no request fires.
+    const missingIds = computed(() => selectedModels.value.filter((m) => !m.name).map((m) => m.id));
+    watch(
+        missingIds,
+        async (ids) => {
+            if (!ids.length) return;
+            try {
+                const res = await $fetch<{ data: any[] }>(`${config.public.apiBase}/api/v1/compare`, {
+                    params: { ids: ids.join(",") },
+                });
+                for (const m of res.data || []) {
+                    patchModel({ id: m.id, name: m.name, provider_id: m.provider_id });
+                }
+            } catch {}
         },
-        { watch: [modelIdsKey] },
+        { immediate: true },
     );
-
-    const selectedModels = computed(() => result.value?.data || []);
 
     const route = useRoute();
     watch(

@@ -12,6 +12,7 @@ export default defineNuxtConfig({
     css: ["~/assets/css/main.css"],
     app: {
         buildAssetsDir: "assets",
+        pageTransition: { name: "page", mode: "out-in" },
         head: {
             link: [{ rel: "icon", type: "image/svg+xml", href: "/favicon.svg" }],
             meta: [
@@ -65,6 +66,17 @@ export default defineNuxtConfig({
         defaults: {
             weights: [400, 500, 600, 700],
         },
-        families: [{ name: "Inter", provider: "none" }],
+        // Fonts are bundled locally via @fontsource-variable/* — remote
+        // providers are disabled so builds never depend on network access.
+        providers: {
+            google: false,
+            googleicons: false,
+            bunny: false,
+            fontshare: false,
+        },
+        families: [
+            { name: "Inter Variable", provider: "none" },
+            { name: "Space Grotesk Variable", provider: "none" },
+        ],
     },
 });

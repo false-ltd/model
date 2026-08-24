@@ -35,10 +35,10 @@
     const code = computed(() => {
         const m = props.model;
         if (!m) return "";
-        const npm = m.providers?.npm || "";
+        const npm = m.provider?.npm || "";
         const importName = npm.replace("@ai-sdk/", "");
         const modelId = m.model_id;
-        const apiBase = m.providers?.api_url || "";
+        const apiBase = m.provider?.api_url || "";
         switch (activeSdk.value) {
             case "curl":
                 return `curl ${apiBase}/chat/completions \\

@@ -3,8 +3,31 @@ import type { Model, CatalogMeta, ApiResponse, SelectItem } from "~/types";
 
 const EMPTY_CATALOG = {
     data: [] as Model[],
-    meta: { total: 0, page: 1, page_size: 100, total_pages: 0 } as CatalogMeta,
+    meta: { total: 0, page: 1, page_size: 50, total_pages: 0 } as CatalogMeta,
 };
+
+/** Stable serialization of a query object for change detection. */
+const stableQuery = (q: Record<string, unknown>) =>
+    JSON.stringify(
+        Object.keys(q)
+            .sort()
+            .map((k) => {
+                const v = q[k];
+                return [k, Array.isArray(v) ? v.join(",") : (v ?? "")];
+            }),
+    );
+
+/** Query keys that affect the catalog request; unrelated changes (e.g. the
+ * compare selection's ?models=) must not trigger a refetch. */
+const CATALOG_QUERY_KEYS = [
+    "q", "page", "sort", "order", "providers", "reasoning", "vision", "freeOnly",
+    "toolCall", "attachment", "openWeights", "structuredOutput", "temperature",
+    "inputTypes", "outputTypes", "priceMin", "priceMax", "outputPriceMin",
+    "outputPriceMax", "pageSize",
+] as const;
+
+const catalogQueryKey = (q: Record<string, unknown>) =>
+    JSON.stringify(CATALOG_QUERY_KEYS.map((k) => [k, Array.isArray(q[k]) ? q[k].join(",") : (q[k] ?? "")]));
 
 export function useCatalog() {
     const route = useRoute();
@@ -40,29 +63,25 @@ export function useCatalog() {
             label: t("catalog.free"),
             icon: "i-lucide-badge-dollar-sign",
             color: "success",
-            default: true,
         },
         {
             key: "reasoning" as const,
             label: t("catalog.reasoning"),
             icon: "i-lucide-brain",
             color: "warning",
-            default: true,
         },
         {
             key: "toolCall" as const,
             label: t("catalog.colToolCall"),
             icon: "i-lucide-wrench",
             color: "info",
-            default: true,
         },
-        { key: "vision" as const, label: t("catalog.vision"), icon: "i-lucide-eye", color: "primary", default: true },
+        { key: "vision" as const, label: t("catalog.vision"), icon: "i-lucide-eye", color: "primary" },
         {
             key: "openWeights" as const,
             label: t("catalog.colWeights"),
             icon: "i-lucide-unlock",
             color: "secondary",
-            default: true,
         },
         { key: "attachment" as const, label: t("catalog.colAttachment"), icon: "i-lucide-paperclip", color: "error" },
         {
@@ -78,12 +97,6 @@ export function useCatalog() {
             color: "secondary",
         },
     ]);
-
-    const toggleFilter = (key: keyof typeof filters) => {
-        filters[key] = !filters[key];
-        currentPage.value = 1;
-        syncToUrl();
-    };
 
     const buildQuery = (): Record<string, string> => {
         const query: Record<string, string> = {};
@@ -146,8 +159,13 @@ export function useCatalog() {
         return params;
     };
 
+    // Only touch the URL when the query actually changed — a redundant
+    // router.replace still fires the route watcher below and would trigger
+    // a duplicate fetch.
     const syncToUrl = () => {
-        router.replace({ query: buildQuery() });
+        const query = buildQuery();
+        if (stableQuery(query) === stableQuery(route.query as Record<string, unknown>)) return;
+        router.replace({ query });
     };
 
     const toggleSort = (field: string) => {
@@ -159,6 +177,11 @@ export function useCatalog() {
         }
         currentPage.value = 1;
         syncToUrl();
+    };
+
+    const toggleFilter = (key: keyof typeof filters) => {
+        filters[key] = !filters[key];
+        // No explicit syncToUrl here: the filters watcher handles it.
     };
 
     const { data: catalogData, pending: loading, execute: fetchCatalog } = useAsyncData(
@@ -175,9 +198,13 @@ export function useCatalog() {
 
     const models = computed((): Model[] => catalogData.value.data);
 
+    // Filter changes flow through the URL; when the current state already
+    // matches the URL (e.g. providers restored from ?providers= on mount)
+    // there is nothing to do — and importantly no page reset.
     watch(
         [selectedProviders, selectedInputTypes, selectedOutputTypes, filters],
         () => {
+            if (stableQuery(buildQuery()) === stableQuery(route.query as Record<string, unknown>)) return;
             currentPage.value = 1;
             syncToUrl();
         },
@@ -187,6 +214,7 @@ export function useCatalog() {
     watchDebounced(
         [priceRange, outputPriceRange],
         () => {
+            if (stableQuery(buildQuery()) === stableQuery(route.query as Record<string, unknown>)) return;
             currentPage.value = 1;
             syncToUrl();
         },
@@ -194,13 +222,19 @@ export function useCatalog() {
     );
 
     watchDebounced(searchQuery, () => {
+        if (stableQuery(buildQuery()) === stableQuery(route.query as Record<string, unknown>)) return;
         currentPage.value = 1;
         syncToUrl();
     }, { debounce: 300 });
 
+    let lastCatalogKey = catalogQueryKey(route.query as Record<string, unknown>);
+
     watch(
         () => route.query,
         () => {
+            const key = catalogQueryKey(route.query as Record<string, unknown>);
+            if (key === lastCatalogKey) return;
+            lastCatalogKey = key;
             currentPage.value = Number(route.query.page) || 1;
             fetchCatalog();
         },

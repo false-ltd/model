@@ -6,6 +6,28 @@
                 <div class="text-sm text-muted">{{ compareModels.length }} / 4 {{ t("compare.modelsSelected") }}</div>
             </div>
             <div class="flex items-center gap-2">
+                <button
+                    v-if="compareModels.length > 0"
+                    :title="t('compare.copyMd')"
+                    class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm bg-elevated text-toned border border-default hover:border-primary hover:text-primary cursor-pointer transition-colors"
+                    @click="copyMarkdown"
+                >
+                    <UIcon name="i-lucide-clipboard-copy" class="size-3.5" />
+                    <span class="hidden sm:inline">{{ t("compare.copyMd") }}</span>
+                </button>
+                <button
+                    v-if="compareModels.length > 1"
+                    @click="diffOnly = !diffOnly"
+                    class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm cursor-pointer transition-colors border"
+                    :class="
+                        diffOnly
+                            ? 'bg-primary text-white border-primary'
+                            : 'bg-elevated text-toned border-default hover:border-primary hover:text-primary'
+                    "
+                >
+                    <UIcon :name="diffOnly ? 'i-lucide-git-compare-arrows' : 'i-lucide-list'" class="size-3.5" />
+                    {{ diffOnly ? t("compare.diffOnly") : t("compare.showAll") }}
+                </button>
                 <CompareModelPicker v-if="modelIds.length < 4" :model-ids="modelIds" />
                 <button
                     v-if="compareModels.length > 0"
@@ -22,8 +44,9 @@
                 <UIcon name="i-lucide-git-compare" class="size-8 text-muted" />
             </div>
             <div class="text-base font-medium text-default mb-1">{{ t("compare.empty") }}</div>
-            <NuxtLink :to="localePath('/catalog')" class="text-sm text-primary hover:underline mt-1">
-                {{ t("nav.catalog") }} →
+            <NuxtLink :to="localePath('/catalog')" class="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-1">
+                {{ t("nav.catalog") }}
+                <UIcon name="i-lucide-arrow-right" class="size-3.5" />
             </NuxtLink>
         </div>
 
@@ -106,7 +129,7 @@
                 <CompareMobileFieldList
                     :title="t('compare.pricing')"
                     icon="i-lucide-dollar-sign"
-                    :fields="pricingFields"
+                    :fields="visPricing"
                     :models="compareModels"
                     :colors="modelColors"
                     :is-best="isCheapest"
@@ -115,7 +138,7 @@
                 <CompareMobileFieldList
                     :title="t('compare.limits')"
                     icon="i-lucide-gauge"
-                    :fields="limitFields"
+                    :fields="visLimits"
                     :models="compareModels"
                     :colors="modelColors"
                     :is-best="isBest"
@@ -124,7 +147,7 @@
                 <CompareMobileFieldList
                     :title="t('compare.capabilities')"
                     icon="i-lucide-zap"
-                    :fields="capabilityFields"
+                    :fields="visCapabilities"
                     :models="compareModels"
                     :colors="modelColors"
                     layout="compact"
@@ -132,7 +155,7 @@
                 <CompareMobileFieldList
                     :title="t('compare.timeline')"
                     icon="i-lucide-clock"
-                    :fields="timelineFields"
+                    :fields="visTimeline"
                     :models="compareModels"
                     :colors="modelColors"
                 />
@@ -144,9 +167,23 @@
                     <div
                         v-for="(m, idx) in compareModels"
                         :key="m.id"
-                        class="border-r border-default last:border-r-0 py-4 px-3 text-center relative group overflow-hidden"
+                        draggable="true"
+                        :title="t('compare.reorder')"
+                        class="border-r border-default last:border-r-0 py-4 px-3 text-center relative group overflow-hidden cursor-grab active:cursor-grabbing transition-colors"
+                        :class="[
+                            dragOver === idx && dragFrom !== idx ? 'bg-primary/10' : '',
+                            dragFrom === idx ? 'opacity-40' : '',
+                        ]"
                         :style="{ borderLeftColor: modelColors[idx], borderLeftWidth: '3px' }"
+                        @dragstart="onDragStart(idx)"
+                        @dragover.prevent="onDragOver(idx)"
+                        @drop.prevent="onDrop(idx)"
+                        @dragend="onDragEnd"
                     >
+                        <UIcon
+                            name="i-lucide-grip-vertical"
+                            class="absolute top-1.5 left-1.5 size-3 text-muted opacity-0 group-hover:opacity-60 transition-opacity"
+                        />
                         <button
                             @click="removeModel(m.id)"
                             class="absolute top-2 right-2 size-5 flex items-center justify-center rounded text-muted hover:text-error hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
@@ -161,9 +198,9 @@
                         >
                         <div class="text-xs text-muted mb-2">{{ m.family }}</div>
                         <div class="flex gap-0.5 justify-center flex-wrap mb-2">
-                            <span v-if="m.cost_input === 0 && m.cost_output === 0" :class="inlineBadgeClass('free')"
-                                >Free</span
-                            >
+                            <span v-if="m.cost_input === 0 && m.cost_output === 0" :class="inlineBadgeClass('free')">{{
+                                t("common.free")
+                            }}</span>
                             <span v-if="m.reasoning" :class="inlineBadgeClass('reasoning')">R</span>
                             <span v-if="m.tool_call" :class="inlineBadgeClass('tool_call')">T</span>
                             <span v-if="isVision(m)" :class="inlineBadgeClass('vision')">V</span>
@@ -172,13 +209,13 @@
                         <div v-if="m.cost_input > 0 || m.cost_output > 0" class="text-[11px] text-toned">
                             ${{ m.cost_input }} / ${{ m.cost_output }}
                         </div>
-                        <div v-else-if="m.cost_input === 0" class="text-[11px] text-success font-medium">Free</div>
+                        <div v-else-if="m.cost_input === 0" class="text-[11px] text-success font-medium">{{ t("common.free") }}</div>
                     </div>
                 </div>
 
-                <SectionHeader :label="t('compare.identity')" icon="i-lucide-fingerprint" />
+                <SectionHeader v-if="visIdentity.length" :label="t('compare.identity')" icon="i-lucide-fingerprint" />
                 <ComparisonRow
-                    v-for="field in identityFields"
+                    v-for="field in visIdentity"
                     :key="field.key"
                     :label="field.label"
                     :models="compareModels"
@@ -187,9 +224,9 @@
                     :column-style="gridStyle"
                 />
 
-                <SectionHeader :label="t('compare.pricing')" icon="i-lucide-dollar-sign" />
+                <SectionHeader v-if="visPricing.length" :label="t('compare.pricing')" icon="i-lucide-dollar-sign" />
                 <ComparisonRow
-                    v-for="field in pricingFields"
+                    v-for="field in visPricing"
                     :key="field.key"
                     :label="field.label"
                     :models="compareModels"
@@ -201,9 +238,9 @@
                     :column-style="gridStyle"
                 />
 
-                <SectionHeader :label="t('compare.limits')" icon="i-lucide-gauge" />
+                <SectionHeader v-if="vis(limitsFields).length" :label="t('compare.limits')" icon="i-lucide-gauge" />
                 <ComparisonRow
-                    v-for="field in limitFields"
+                    v-for="field in visLimits"
                     :key="field.key"
                     :label="field.label"
                     :models="compareModels"
@@ -215,9 +252,9 @@
                     :column-style="gridStyle"
                 />
 
-                <SectionHeader :label="t('compare.capabilities')" icon="i-lucide-zap" />
+                <SectionHeader v-if="vis(capabilitiesFields).length" :label="t('compare.capabilities')" icon="i-lucide-zap" />
                 <ComparisonRow
-                    v-for="cap in capabilityFields"
+                    v-for="cap in visCapabilities"
                     :key="cap.key"
                     :label="cap.label"
                     :models="compareModels"
@@ -226,8 +263,8 @@
                     :column-style="gridStyle"
                 />
 
-                <SectionHeader :label="t('compare.modalities')" icon="i-lucide-layers" />
-                <div class="grid border-b border-default" :style="gridStyle">
+                <SectionHeader v-if="!(diffOnly && modalitiesUniform)" :label="t('compare.modalities')" icon="i-lucide-layers" />
+                <div v-if="!(diffOnly && modalitiesUniform)" class="grid border-b border-default" :style="gridStyle">
                     <div
                         class="bg-elevated border-r border-b border-default p-2.5 px-4 text-xs text-muted flex items-center"
                     >
@@ -251,7 +288,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="grid border-b border-default" :style="gridStyle">
+                <div v-if="!(diffOnly && modalitiesUniform)" class="grid border-b border-default" :style="gridStyle">
                     <div
                         class="bg-elevated border-r border-b border-default p-2.5 px-4 text-xs text-muted flex items-center"
                     >
@@ -290,14 +327,21 @@
                             class="border-r border-default p-2.5 text-center text-sm"
                             :class="m.interleaved ? 'text-success font-semibold' : 'text-muted'"
                         >
-                            {{ m.interleaved ? (typeof m.interleaved === "object" ? m.interleaved.field : "✓") : "—" }}
+                        <template v-if="m.interleaved">
+                            <span
+                                v-if="typeof m.interleaved === 'object' && m.interleaved !== null && 'field' in (m.interleaved as object)"
+                                class="font-mono"
+                            >{{ (m.interleaved as any).field }}</span>
+                            <UIcon v-else name="i-lucide-check" class="size-4 mx-auto" />
+                        </template>
+                        <span v-else class="text-muted">—</span>
                         </div>
                     </div>
                 </template>
 
-                <SectionHeader :label="t('compare.timeline')" icon="i-lucide-clock" />
+                <SectionHeader v-if="visTimeline.length" :label="t('compare.timeline')" icon="i-lucide-clock" />
                 <ComparisonRow
-                    v-for="field in timelineFields"
+                    v-for="field in visTimeline"
                     :key="field.key"
                     :label="field.label"
                     :models="compareModels"
@@ -305,15 +349,14 @@
                     :column-style="gridStyle"
                 />
 
-                <SectionHeader :label="t('compare.integration')" icon="i-lucide-plug" />
+                <SectionHeader v-if="visIntegration.length" :label="t('compare.integration')" icon="i-lucide-plug" />
                 <ComparisonRow
-                    v-for="field in integrationFields"
+                    v-for="field in visIntegration"
                     :key="field.key"
                     :label="field.label"
                     :models="compareModels"
                     :field-key="field.key"
                     nested
-                    monospace
                 />
             </div>
         </template>
@@ -323,10 +366,11 @@
 <script setup lang="ts">
     import { inlineBadgeClass } from "~/utils/badge";
 
-    const { modelIds, removeModel, clearAll } = useCompare();
+    const { modelIds, removeModel, clearAll, reorderModels } = useCompare();
     const localePath = useLocalePath();
     const { t } = useI18n();
     const config = useRuntimeConfig();
+    const toast = useToast();
 
     useSeoMeta({
         title: t("seo.compareTitle"),
@@ -339,6 +383,80 @@
 
     const pricingTab = ref("all");
     const { isMobile } = useMobile();
+
+    // ---- differences-only mode ----
+    const diffOnly = ref(false);
+
+    const resolveVal = (m: any, key: string) => key.split(".").reduce((o: any, k: string) => o?.[k], m);
+
+    const differs = (field: { key: string; format?: (v: any) => string }) => {
+        const values = new Set(
+            compareModels.value.map((m: any) => {
+                const v = resolveVal(m, field.key);
+                return field.format ? field.format(v) : (v ?? "—");
+            }),
+        );
+        return values.size > 1;
+    };
+
+    function vis<T extends { key: string; format?: (v: any) => string }>(fields: T[] | undefined): T[] {
+        const list = fields ?? [];
+        return diffOnly.value ? list.filter(differs) : list;
+    }
+
+    const modalitiesUniform = computed(() => {
+        const ins = compareModels.value.map((m: any) => (m.modalities_input || []).join(","));
+        const outs = compareModels.value.map((m: any) => (m.modalities_output || []).join(","));
+        return new Set(ins).size <= 1 && new Set(outs).size <= 1;
+    });
+
+    // ---- column drag reorder (desktop) ----
+    const dragFrom = ref(-1);
+    const dragOver = ref(-1);
+    const onDragStart = (idx: number) => (dragFrom.value = idx);
+    const onDragOver = (idx: number) => {
+        if (dragFrom.value >= 0 && dragFrom.value !== idx) dragOver.value = idx;
+    };
+    const onDrop = (idx: number) => {
+        if (dragFrom.value >= 0) reorderModels(dragFrom.value, idx);
+        dragFrom.value = -1;
+        dragOver.value = -1;
+    };
+    const onDragEnd = () => {
+        dragFrom.value = -1;
+        dragOver.value = -1;
+    };
+
+    const copyMarkdown = async () => {
+        const names = compareModels.value.map((m: any) => m.name);
+        const lines: string[] = [
+            `| ${t("compare.title")} | ${names.join(" | ")} |`,
+            `|---|${names.map(() => "---").join("|")}|`,
+        ];
+        const section = (label: string, fields: { key: string; label: string; format?: (v: any) => string }[]) => {
+            const visFields = vis(fields);
+            if (!visFields.length) return;
+            lines.push(`| **${label}** | ${names.map(() => "").join(" | ")} |`);
+            for (const f of visFields) {
+                const vals = compareModels.value.map((m: any) => {
+                    const v = resolveVal(m, f.key);
+                    const s = f.format ? f.format(v) : (v ?? "—");
+                    return String(s).replace(/\|/g, "\\|");
+                });
+                lines.push(`| ${f.label} | ${vals.join(" | ")} |`);
+            }
+        };
+        section(t("compare.identity"), identityFields.value);
+        section(t("compare.pricing"), pricingFields.value);
+        section(t("compare.limits"), limitFields.value);
+        section(t("compare.capabilities"), capabilityFields.value);
+        section(t("compare.timeline"), timelineFields.value);
+        section(t("compare.integration"), integrationFields.value);
+        try {
+            await navigator.clipboard.writeText(lines.join("\n"));
+            toast.add({ title: t("compare.copiedMd"), color: "success", icon: "i-lucide-check-circle" });
+        } catch {}
+    };
 
     const { data: compareResult } = await useAsyncData(
         "compare-models",
@@ -373,4 +491,13 @@
         pricingDatasets,
         limitDatasets,
     } = useCompareData(compareModels);
+
+    // Pre-computed visible field lists — keeps templates off fragile
+    // binding paths and guards against undefined during render.
+    const visIdentity = computed(() => vis(identityFields.value));
+    const visPricing = computed(() => vis(pricingFields.value));
+    const visLimits = computed(() => vis(limitFields.value));
+    const visCapabilities = computed(() => vis(capabilityFields.value));
+    const visTimeline = computed(() => vis(timelineFields.value));
+    const visIntegration = computed(() => vis(integrationFields.value));
 </script>

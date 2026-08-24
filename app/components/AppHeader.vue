@@ -15,6 +15,14 @@
 
             <!-- Desktop actions -->
             <div class="hidden md:flex items-center gap-1">
+                <button
+                    @click="paletteOpen = true"
+                    class="flex items-center gap-2 h-8 px-2.5 rounded-lg border border-default bg-elevated/60 text-xs text-muted hover:text-default hover:border-accented transition-colors cursor-pointer"
+                >
+                    <UIcon name="i-lucide-search" class="size-3.5" />
+                    <span class="hidden lg:inline">{{ t("palette.trigger") }}</span>
+                    <UKbd value="meta" variant="subtle" /><UKbd value="K" variant="subtle" />
+                </button>
                 <UButton variant="ghost" color="neutral" icon="i-lucide-github" to="https://github.com/false-ltd/model" external target="_blank" />
                 <UColorModeButton class="cursor-pointer" />
                 <UDropdownMenu :items="localeItems">
@@ -27,6 +35,7 @@
 
             <!-- Mobile actions -->
             <div class="flex md:hidden items-center gap-1">
+                <UButton variant="ghost" color="neutral" icon="i-lucide-search" aria-label="Search" @click="paletteOpen = true" />
                 <UColorModeButton />
                 <UDropdownMenu :items="mobileMenuItems" :content="{ align: 'end' }">
                     <UButton variant="ghost" color="neutral" icon="i-lucide-menu" />
@@ -40,13 +49,13 @@
     const { locale, locales, t } = useI18n();
     const switchLocalePath = useSwitchLocalePath();
     const localePath = useLocalePath();
+    const paletteOpen = useState<boolean>("command-palette-open", () => false);
 
     const navItems = computed(() => [
         { label: t("nav.overview"), to: localePath("/") },
         { label: t("nav.catalog"), to: localePath("/catalog") },
         { label: t("nav.providers"), to: localePath("/providers") },
         { label: t("nav.compare"), to: localePath("/compare") },
-        { label: "False", icon: "i-lucide-terminal", to: "https://false.ltd", target: "_blank" },
     ]);
 
     const localeItems = computed(() =>

@@ -1,15 +1,18 @@
 import type { Provider, ApiResponse } from "~/types";
 
 export function useProviders() {
-    const { t } = useI18n();
     const config = useRuntimeConfig();
 
-    const viewMode = ref<"grid" | "table">("grid");
+    // Session-scoped so the view preference survives page navigation.
+    const viewMode = useState<"grid" | "table">("providers-view", () => "grid");
     const search = ref("");
 
-    const { data: result } = useAsyncData("providers-list", () =>
+    const { data: result, status, error, execute } = useAsyncData("providers-list", () =>
         $fetch<ApiResponse<Provider[]>>(`${config.public.apiBase}/api/v1/providers`),
     );
+
+    const loading = computed(() => status.value === "pending");
+    const loadError = computed(() => error.value != null);
 
     const providersList = computed(() => result.value?.data || []);
 
@@ -24,5 +27,5 @@ export function useProviders() {
         );
     });
 
-    return { viewMode, search, providersList, filtered };
+    return { viewMode, search, providersList, filtered, loading, loadError, retry: () => execute() };
 }

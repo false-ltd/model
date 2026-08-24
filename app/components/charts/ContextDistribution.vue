@@ -17,6 +17,7 @@
         title: string;
         subtitle: string;
         items: { limit_context: number }[];
+        unitLabel?: string;
     }>();
 
     const buckets = computed(() => {
@@ -77,7 +78,7 @@
                         tooltip: {
                             ...chartTooltip,
                             callbacks: {
-                                label: (ctx) => ` ${ctx.parsed.y} models`,
+                                label: (ctx) => ` ${ctx.parsed.y} ${props.unitLabel ?? "models"}`,
                             },
                         },
                         legend: { display: false },

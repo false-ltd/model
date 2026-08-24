@@ -19,24 +19,15 @@ func NewCompareHandler(modelService *service.ModelService) *CompareHandler {
 
 // Compare godoc
 // @Summary 模型对比
-// @Description 根据多个模型 ID 返回对比数据，保持请求顺序
+// @Description 根据多个模型 ID 返回对比数据，保持请求顺序并去重
 // @Tags compare
 // @Produce json
 // @Param ids query string true "模型 ID，逗号分隔 (如 1,2,3)"
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} model.PagedResponse
 // @Failure 500 {object} model.Response
 // @Router /api/v1/compare [get]
 func (h *CompareHandler) Compare(c *gin.Context) {
 	idsStr := c.Query("ids")
-	if idsStr == "" {
-		c.JSON(http.StatusOK, gin.H{
-			"code":    0,
-			"message": "success",
-			"data":    []interface{}{},
-			"meta":    gin.H{"count": 0},
-		})
-		return
-	}
 
 	var ids []uint
 	for _, s := range parseCommaSlice(idsStr) {
@@ -49,14 +40,9 @@ func (h *CompareHandler) Compare(c *gin.Context) {
 
 	result, err := h.modelService.Compare(ids)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, model.ErrorResponse(50001, err.Error()))
+		internalError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data":    result.Data,
-		"meta":    gin.H{"count": result.Count},
-	})
+	c.JSON(http.StatusOK, model.CountSuccessResponse(result.Data, result.Count))
 }

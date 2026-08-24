@@ -2,64 +2,101 @@ package service
 
 import (
 	"math"
+	"sort"
+	"time"
 
+	"github.com/false-ltd/model/api/internal/cache"
 	"github.com/false-ltd/model/api/internal/model"
 	"github.com/false-ltd/model/api/internal/repository"
 )
 
+const statsCacheKey = "stats"
+const statsCacheTTL = 5 * time.Minute
+
 type StatsService struct {
 	modelRepo    *repository.ModelRepo
 	providerRepo *repository.ProviderRepo
+	cache        *cache.Cache
 }
 
-func NewStatsService(modelRepo *repository.ModelRepo, providerRepo *repository.ProviderRepo) *StatsService {
-	return &StatsService{modelRepo: modelRepo, providerRepo: providerRepo}
+func NewStatsService(modelRepo *repository.ModelRepo, providerRepo *repository.ProviderRepo, c *cache.Cache) *StatsService {
+	return &StatsService{modelRepo: modelRepo, providerRepo: providerRepo, cache: c}
 }
 
+// Get returns aggregate stats, cached until invalidation on data sync.
 func (s *StatsService) Get() (*model.StatsData, error) {
-	totalProviders, _ := s.providerRepo.FindAll()
-	totalModels, _ := s.modelRepo.CountAll()
-	freeCount, _ := s.modelRepo.CountWhere("cost_input = 0 AND cost_output = 0")
-	reasoningCount, _ := s.modelRepo.CountWhere("reasoning = true")
-	toolCallCount, _ := s.modelRepo.CountWhere("tool_call = true")
-	visionCount, _ := s.modelRepo.CountWhere("JSON_CONTAINS(modalities_input, '\"image\"')")
-	attachmentCount, _ := s.modelRepo.CountWhere("attachment = true")
-	temperatureCount, _ := s.modelRepo.CountWhere("temperature = true")
-	openCount, _ := s.modelRepo.CountWhere("open_weights = true")
+	v, err := s.cache.GetOrCompute(statsCacheKey, statsCacheTTL, s.compute)
+	if err != nil {
+		return nil, err
+	}
+	return v.(*model.StatsData), nil
+}
 
-	total := int(totalModels)
+func (s *StatsService) compute() (any, error) {
+	agg, err := s.modelRepo.AggregateCounts()
+	if err != nil {
+		return nil, err
+	}
 
-	prices, _ := s.modelRepo.FindColumnValues("cost_input")
+	providers, err := s.providerRepo.FindAll()
+	if err != nil {
+		return nil, err
+	}
+
+	prices, err := s.modelRepo.FindColumnValues("cost_input")
+	if err != nil {
+		return nil, err
+	}
 	medianPrice := medianFloat(prices)
 
-	contexts, _ := s.modelRepo.FindIntColumnValues("limit_context")
+	contexts, err := s.modelRepo.FindIntColumnValues("limit_context")
+	if err != nil {
+		return nil, err
+	}
 	medianCtx := medianInt(contexts)
 
-	allPrices, _ := s.modelRepo.FindAllPrices()
+	allPrices, err := s.modelRepo.FindAllPrices()
+	if err != nil {
+		return nil, err
+	}
 	tiers := calcTiers(allPrices)
 
 	capabilities := map[string]model.CapItem{
-		"reasoning":   {Count: int(reasoningCount), Total: total},
-		"tool_call":   {Count: int(toolCallCount), Total: total},
-		"vision":      {Count: int(visionCount), Total: total},
-		"attachment":  {Count: int(attachmentCount), Total: total},
-		"temperature": {Count: int(temperatureCount), Total: total},
+		"reasoning":   {Count: int(agg.Reasoning), Total: int(agg.Total)},
+		"tool_call":   {Count: int(agg.ToolCall), Total: int(agg.Total)},
+		"vision":      {Count: int(agg.Vision), Total: int(agg.Total)},
+		"attachment":  {Count: int(agg.Attachment), Total: int(agg.Total)},
+		"temperature": {Count: int(agg.Temperature), Total: int(agg.Total)},
 	}
 
-	provCounts, _ := s.modelRepo.FindProviderModelCounts()
-	topProviders := calcTopProviders(provCounts)
+	topProviders, err := s.modelRepo.FindTopProviders(5)
+	if err != nil {
+		return nil, err
+	}
 
-	modData, _ := s.modelRepo.FindAllModalityData()
+	modData, err := s.modelRepo.FindAllModalityData()
+	if err != nil {
+		return nil, err
+	}
 	modalities := calcModalities(modData)
 
-	open := int(openCount)
+	open := int(agg.OpenWeights)
+	total := int(agg.Total)
 	weights := model.WeightsDist{
 		Open:    open,
 		Closed:  total - open,
 		OpenPct: pct(open, total),
 	}
 
-	ctxLimits, _ := s.modelRepo.FindAllContextLimits()
+	recent, err := s.modelRepo.FindRecentModels(12)
+	if err != nil {
+		return nil, err
+	}
+
+	ctxLimits, err := s.modelRepo.FindAllContextLimits()
+	if err != nil {
+		return nil, err
+	}
 	ctxDist := make([]model.ContextItem, 0, len(ctxLimits))
 	for _, v := range ctxLimits {
 		ctxDist = append(ctxDist, model.ContextItem{LimitContext: v})
@@ -67,13 +104,13 @@ func (s *StatsService) Get() (*model.StatsData, error) {
 
 	return &model.StatsData{
 		Stats: model.StatsKPIs{
-			TotalProviders:   len(totalProviders),
+			TotalProviders:   len(providers),
 			TotalModels:      total,
-			FreeModelsCount:  int(freeCount),
-			FreeModelsPct:    pct(int(freeCount), total),
+			FreeModelsCount:  int(agg.Free),
+			FreeModelsPct:    pct(int(agg.Free), total),
 			MedianInputPrice: medianPrice,
-			ReasoningCount:   int(reasoningCount),
-			ReasoningPct:     pct(int(reasoningCount), total),
+			ReasoningCount:   int(agg.Reasoning),
+			ReasoningPct:     pct(int(agg.Reasoning), total),
 			MedianContext:    medianCtx,
 		},
 		Tiers:               tiers,
@@ -82,10 +119,13 @@ func (s *StatsService) Get() (*model.StatsData, error) {
 		Modalities:          modalities,
 		WeightsDistribution: weights,
 		ContextDistribution: ctxDist,
+		Recent:              recent,
 	}, nil
 }
 
+// medianFloat sorts defensively; the repo already returns ordered values.
 func medianFloat(arr []float64) float64 {
+	sort.Float64s(arr)
 	n := len(arr)
 	if n == 0 {
 		return 0
@@ -97,6 +137,7 @@ func medianFloat(arr []float64) float64 {
 }
 
 func medianInt(arr []int) int {
+	sort.Ints(arr)
 	n := len(arr)
 	if n == 0 {
 		return 0
@@ -146,34 +187,6 @@ func floatPtr(p *float64) float64 {
 	return 0
 }
 
-func calcTopProviders(data []struct {
-	ProviderID   string
-	ProviderName string
-}) []model.TopProvider {
-	counts := make(map[string]*model.TopProvider)
-	for _, d := range data {
-		if _, ok := counts[d.ProviderID]; !ok {
-			counts[d.ProviderID] = &model.TopProvider{ID: d.ProviderID, Name: d.ProviderName}
-		}
-		counts[d.ProviderID].Count++
-	}
-	result := make([]model.TopProvider, 0, len(counts))
-	for _, v := range counts {
-		result = append(result, *v)
-	}
-	for i := 0; i < len(result); i++ {
-		for j := i + 1; j < len(result); j++ {
-			if result[j].Count > result[i].Count {
-				result[i], result[j] = result[j], result[i]
-			}
-		}
-	}
-	if len(result) > 5 {
-		result = result[:5]
-	}
-	return result
-}
-
 func calcModalities(data []struct {
 	ModalitiesInput  model.StringSlice
 	ModalitiesOutput model.StringSlice
@@ -199,12 +212,11 @@ func toModSlice(m map[string]int) []model.ModalityCount {
 	for t, c := range m {
 		result = append(result, model.ModalityCount{Type: t, Count: c})
 	}
-	for i := 0; i < len(result); i++ {
-		for j := i + 1; j < len(result); j++ {
-			if result[j].Count > result[i].Count {
-				result[i], result[j] = result[j], result[i]
-			}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].Count != result[j].Count {
+			return result[i].Count > result[j].Count
 		}
-	}
+		return result[i].Type < result[j].Type
+	})
 	return result
 }

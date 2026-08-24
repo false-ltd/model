@@ -16,6 +16,11 @@ func NewProviderRepo(db *gorm.DB) *ProviderRepo {
 	return &ProviderRepo{db: db}
 }
 
+// WithTx returns a shallow copy of the repo bound to a transaction.
+func (r *ProviderRepo) WithTx(tx *gorm.DB) *ProviderRepo {
+	return &ProviderRepo{db: tx}
+}
+
 func (r *ProviderRepo) FindAll() ([]model.Provider, error) {
 	var providers []model.Provider
 	err := r.db.Order("name ASC").Find(&providers).Error

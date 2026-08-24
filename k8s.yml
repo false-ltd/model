@@ -30,6 +30,19 @@ spec:
                             secretKeyRef:
                                 name: model-secrets
                                 key: database-dsn
+                      # Sync API keys; when absent, POST /api/v1/sync stays
+                      # disabled (fail closed). Set MODEL_API_KEYS in the
+                      # model-secrets secret to enable manual sync triggers.
+                      - name: MODEL_API_KEYS
+                        valueFrom:
+                            secretKeyRef:
+                                name: model-secrets
+                                key: api-keys
+                                optional: true
+                      # Trust the ingress proxy CIDR so the rate limiter
+                      # sees real client IPs from X-Forwarded-For.
+                      - name: MODEL_TRUSTED_PROXIES
+                        value: 10.0.0.0/8
                   resources:
                       requests:
                           memory: "64Mi"

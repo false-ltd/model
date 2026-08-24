@@ -27,3 +27,5 @@ public/designs
 .claude/
 api.json
 schema_desc.md
+.gitnexus
+api/server

@@ -21,19 +21,14 @@ func NewProviderHandler(providerService *service.ProviderService) *ProviderHandl
 // @Description 返回所有 AI 服务商及其模型数量
 // @Tags providers
 // @Produce json
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} model.PagedResponse
 // @Failure 500 {object} model.Response
 // @Router /api/v1/providers [get]
 func (h *ProviderHandler) List(c *gin.Context) {
 	providers, count, err := h.providerService.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, model.ErrorResponse(50001, err.Error()))
+		internalError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code":    0,
-		"message": "success",
-		"data":    providers,
-		"meta":    gin.H{"count": count},
-	})
+	c.JSON(http.StatusOK, model.CountSuccessResponse(providers, count))
 }

@@ -1,28 +1,43 @@
 package service
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
+	"gorm.io/gorm"
+
+	"github.com/false-ltd/model/api/internal/cache"
 	"github.com/false-ltd/model/api/internal/config"
 	"github.com/false-ltd/model/api/internal/model"
 	"github.com/false-ltd/model/api/internal/repository"
 )
 
+// ErrSyncInProgress is returned when a sync is already running; the caller
+// should report it as a conflict rather than an internal error.
+var ErrSyncInProgress = errors.New("sync already in progress")
+
 type SyncService struct {
 	providerRepo *repository.ProviderRepo
 	modelRepo    *repository.ModelRepo
+	db           *gorm.DB
 	cfg          *config.SyncConfig
+	cache        *cache.Cache
 	httpClient   *http.Client
+	mu           sync.Mutex
 }
 
-func NewSyncService(providerRepo *repository.ProviderRepo, modelRepo *repository.ModelRepo, cfg *config.SyncConfig) *SyncService {
+func NewSyncService(providerRepo *repository.ProviderRepo, modelRepo *repository.ModelRepo, db *gorm.DB, cfg *config.SyncConfig, c *cache.Cache) *SyncService {
 	return &SyncService{
 		providerRepo: providerRepo,
 		modelRepo:    modelRepo,
+		db:           db,
 		cfg:          cfg,
+		cache:        c,
 		httpClient:   &http.Client{Timeout: 30 * time.Second},
 	}
 }
@@ -40,6 +55,13 @@ func (s *SyncService) GetStatus() (*model.SyncStatus, error) {
 }
 
 func (s *SyncService) Trigger() (*model.SyncResult, error) {
+	// Serialize triggers: cron and manual POST /sync can race, and without
+	// the lock both would pass the cooldown check and double-write.
+	if !s.mu.TryLock() {
+		return nil, ErrSyncInProgress
+	}
+	defer s.mu.Unlock()
+
 	latest, err := s.providerRepo.GetLatestSyncedAt()
 	if err != nil {
 		return nil, err
@@ -66,15 +88,20 @@ func (s *SyncService) Trigger() (*model.SyncResult, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
 		return nil, fmt.Errorf("failed to parse models.dev JSON: %w", err)
 	}
+	if len(raw) == 0 {
+		return nil, errors.New("models.dev returned no providers; refusing to wipe local data")
+	}
 
 	var providers []model.Provider
 	var models []model.AIModel
 	var keepProviderIDs []string
-	var keepModelIDs []string
+	modelsByProvider := map[string][]string{}
 
 	for providerID, rawProvider := range raw {
 		var tmp map[string]json.RawMessage
-		json.Unmarshal(rawProvider, &tmp)
+		if err := json.Unmarshal(rawProvider, &tmp); err != nil {
+			return nil, fmt.Errorf("failed to parse provider %q: %w", providerID, err)
+		}
 
 		p := struct {
 			Name string
@@ -109,29 +136,57 @@ func (s *SyncService) Trigger() (*model.SyncResult, error) {
 
 		if rawModels, ok := tmp["models"]; ok {
 			var modelsMap map[string]json.RawMessage
-			json.Unmarshal(rawModels, &modelsMap)
+			if err := json.Unmarshal(rawModels, &modelsMap); err != nil {
+				return nil, fmt.Errorf("failed to parse models of provider %q: %w", providerID, err)
+			}
 
 			for modelID, rawModel := range modelsMap {
 				m := parseModel(rawModel, providerID, modelID)
 				models = append(models, m)
-				keepModelIDs = append(keepModelIDs, modelID)
+				modelsByProvider[providerID] = append(modelsByProvider[providerID], modelID)
 			}
 		}
 	}
 
-	if err := s.providerRepo.UpsertAll(providers); err != nil {
-		return nil, fmt.Errorf("failed to upsert providers: %w", err)
+	if len(models) == 0 {
+		return nil, errors.New("models.dev returned no models; refusing to wipe local data")
 	}
-
-	if err := s.modelRepo.UpsertAll(models); err != nil {
-		return nil, fmt.Errorf("failed to upsert models: %w", err)
-	}
-
-	s.modelRepo.DeleteNotInModelIDs(keepModelIDs)
-	s.providerRepo.DeleteNotInProviderIDs(keepProviderIDs)
 
 	now := time.Now()
-	s.providerRepo.UpdateSyncedAt(now)
+
+	// All writes in one transaction: either the dataset is fully replaced
+	// or the previous state stays intact and readable.
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		ptx := s.providerRepo.WithTx(tx)
+		mtx := s.modelRepo.WithTx(tx)
+
+		if err := ptx.UpsertAll(providers); err != nil {
+			return fmt.Errorf("failed to upsert providers: %w", err)
+		}
+		if err := mtx.UpsertAll(models); err != nil {
+			return fmt.Errorf("failed to upsert models: %w", err)
+		}
+		for providerID, keepModelIDs := range modelsByProvider {
+			if err := mtx.DeleteStaleForProvider(providerID, keepModelIDs); err != nil {
+				return fmt.Errorf("failed to delete removed models of provider %q: %w", providerID, err)
+			}
+		}
+		if err := mtx.DeleteByProviderIDsNotIn(keepProviderIDs); err != nil {
+			return fmt.Errorf("failed to delete models of removed providers: %w", err)
+		}
+		if err := ptx.DeleteNotInProviderIDs(keepProviderIDs); err != nil {
+			return fmt.Errorf("failed to delete removed providers: %w", err)
+		}
+		if err := ptx.UpdateSyncedAt(now); err != nil {
+			return fmt.Errorf("failed to record sync time: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	s.cache.Invalidate()
 
 	return &model.SyncResult{
 		SyncedAt:  now.Format(time.RFC3339),
@@ -175,11 +230,15 @@ func parseModel(raw json.RawMessage, providerID, modelID string) model.AIModel {
 		m.StructuredOutput = b
 	}
 
+	// Upstream encodes interleaved as `false` when unsupported; treat
+	// null/false as absent and keep everything else (bool/string/object).
 	if v, ok := tmp["interleaved"]; ok {
-		var val model.InterleavedType
-		json.Unmarshal(v, &val.Data)
-		if val.Data != nil && val.Data != false {
-			m.Interleaved = &val
+		trimmed := bytes.TrimSpace(v)
+		if len(trimmed) > 0 && string(trimmed) != "null" && string(trimmed) != "false" {
+			var val model.InterleavedType
+			if err := json.Unmarshal(v, &val.Data); err == nil && val.Data != nil {
+				m.Interleaved = &val
+			}
 		}
 	}
 

@@ -1,8 +1,13 @@
 package handler
 
 import (
+	"errors"
+	"log"
 	"net/http"
 	"strconv"
+	"strings"
+
+	"gorm.io/gorm"
 
 	"github.com/false-ltd/model/api/internal/model"
 	"github.com/false-ltd/model/api/internal/service"
@@ -31,14 +36,19 @@ func NewModelHandler(modelService *service.ModelService) *ModelHandler {
 // @Param providers query string false "服务商过滤，逗号分隔"
 // @Param input_types query string false "输入模态过滤，逗号分隔"
 // @Param output_types query string false "输出模态过滤，逗号分隔"
-// @Param reasoning query bool false "仅推理模型"
-// @Param tool_call query bool false "仅工具调用模型"
-// @Param vision query bool false "仅视觉模型"
-// @Param attachment query bool false "仅支持附件的模型"
+// @Param reasoning query bool false "推理模型筛选 (true/false)"
+// @Param tool_call query bool false "工具调用筛选 (true/false)"
+// @Param vision query bool false "视觉模型筛选 (true/false)"
+// @Param attachment query bool false "附件支持筛选 (true/false)"
+// @Param open_weights query bool false "开放权重筛选 (true/false)"
+// @Param structured_output query bool false "结构化输出筛选 (true/false)"
+// @Param temperature query bool false "温度参数筛选 (true/false)"
 // @Param free_only query bool false "仅免费模型"
 // @Param under_1 query bool false "输入成本低于 $1"
 // @Param price_min query number false "最低输入成本"
 // @Param price_max query number false "最高输入成本"
+// @Param price_output_min query number false "最低输出成本"
+// @Param price_output_max query number false "最高输出成本"
 // @Success 200 {object} model.PagedResponse
 // @Failure 500 {object} model.Response
 // @Router /api/v1/models [get]
@@ -46,7 +56,7 @@ func (h *ModelHandler) List(c *gin.Context) {
 	f := parseModelFilter(c)
 	result, err := h.modelService.List(f)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, model.ErrorResponse(50001, err.Error()))
+		internalError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, model.PagedSuccessResponse(result.Data, result.Total, f.Page, f.PageSize))
@@ -70,7 +80,11 @@ func (h *ModelHandler) Get(c *gin.Context) {
 	}
 	m, err := h.modelService.GetByID(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, model.ErrorResponse(40401, "model not found"))
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, model.ErrorResponse(40401, "model not found"))
+			return
+		}
+		internalError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, model.SuccessResponse(m))
@@ -98,35 +112,18 @@ func parseModelFilter(c *gin.Context) *model.ModelFilter {
 		Providers:   parseCommaSlice(c.Query("providers")),
 		InputTypes:  parseCommaSlice(c.Query("input_types")),
 		OutputTypes: parseCommaSlice(c.Query("output_types")),
+
+		Reasoning:        parseBoolFilter(c, "reasoning"),
+		ToolCall:         parseBoolFilter(c, "tool_call"),
+		Vision:           parseBoolFilter(c, "vision"),
+		Attachment:       parseBoolFilter(c, "attachment"),
+		OpenWeights:      parseBoolFilter(c, "open_weights"),
+		StructuredOutput: parseBoolFilter(c, "structured_output"),
+		Temperature:      parseBoolFilter(c, "temperature"),
+		FreeOnly:         parseBoolFilter(c, "free_only"),
+		Under1:           parseBoolFilter(c, "under_1"),
 	}
 
-	if v := c.Query("reasoning"); v == "true" {
-		f.Reasoning = boolPtr(true)
-	}
-	if v := c.Query("tool_call"); v == "true" {
-		f.ToolCall = boolPtr(true)
-	}
-	if v := c.Query("vision"); v == "true" {
-		f.Vision = boolPtr(true)
-	}
-	if v := c.Query("attachment"); v == "true" {
-		f.Attachment = boolPtr(true)
-	}
-	if v := c.Query("open_weights"); v == "true" {
-		f.OpenWeights = boolPtr(true)
-	}
-	if v := c.Query("structured_output"); v == "true" {
-		f.StructuredOutput = boolPtr(true)
-	}
-	if v := c.Query("temperature"); v == "true" {
-		f.Temperature = boolPtr(true)
-	}
-	if v := c.Query("free_only"); v == "true" {
-		f.FreeOnly = boolPtr(true)
-	}
-	if v := c.Query("under_1"); v == "true" {
-		f.Under1 = boolPtr(true)
-	}
 	if v := c.Query("price_min"); v != "" {
 		if f64, err := strconv.ParseFloat(v, 64); err == nil {
 			f.PriceMin = &f64
@@ -151,22 +148,39 @@ func parseModelFilter(c *gin.Context) *model.ModelFilter {
 	return f
 }
 
+// parseBoolFilter maps an explicit true/false query value to a *bool filter
+// and returns nil when the parameter is absent or unrecognized.
+func parseBoolFilter(c *gin.Context, key string) *bool {
+	v := c.Query(key)
+	switch v {
+	case "true":
+		b := true
+		return &b
+	case "false":
+		b := false
+		return &b
+	}
+	return nil
+}
+
 func parseCommaSlice(s string) []string {
 	if s == "" {
 		return nil
 	}
-	var result []string
-	start := 0
-	for i := 0; i <= len(s); i++ {
-		if i == len(s) || s[i] == ',' {
-			part := s[start:i]
-			if part != "" {
-				result = append(result, part)
-			}
-			start = i + 1
+	parts := strings.Split(s, ",")
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			result = append(result, p)
 		}
 	}
 	return result
 }
 
-func boolPtr(b bool) *bool { return &b }
+// internalError logs the cause server-side and responds with a generic
+// message so DSN/SQL internals never leak to clients.
+func internalError(c *gin.Context, err error) {
+	reqID, _ := c.Get("request_id")
+	log.Printf("[%v] internal error on %s %s: %v", reqID, c.Request.Method, c.Request.URL.Path, err)
+	c.JSON(http.StatusInternalServerError, model.ErrorResponse(50001, "internal server error"))
+}

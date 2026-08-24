@@ -10,7 +10,7 @@ type PagedResponse struct {
 	Code    int         `json:"code"`
 	Message string      `json:"message"`
 	Data    interface{} `json:"data"`
-	Meta    *PageMeta   `json:"meta,omitempty"`
+	Meta    interface{} `json:"meta,omitempty"`
 }
 
 type PageMeta struct {
@@ -18,6 +18,10 @@ type PageMeta struct {
 	Page       int   `json:"page"`
 	PageSize   int   `json:"page_size"`
 	TotalPages int   `json:"total_pages"`
+}
+
+type CountMeta struct {
+	Count int `json:"count"`
 }
 
 func ErrorResponse(code int, msg string) Response {
@@ -43,5 +47,14 @@ func PagedSuccessResponse(data interface{}, total int64, page, pageSize int) Pag
 			PageSize:   pageSize,
 			TotalPages: totalPages,
 		},
+	}
+}
+
+func CountSuccessResponse(data interface{}, count int) PagedResponse {
+	return PagedResponse{
+		Code:    0,
+		Message: "success",
+		Data:    data,
+		Meta:    CountMeta{Count: count},
 	}
 }

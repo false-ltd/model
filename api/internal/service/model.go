@@ -26,6 +26,18 @@ func (s *ModelService) Compare(ids []uint) (*model.CompareResult, error) {
 		return &model.CompareResult{Data: []model.AIModel{}, Count: 0}, nil
 	}
 
+	// Dedupe while preserving request order.
+	seen := make(map[uint]struct{}, len(ids))
+	unique := make([]uint, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		unique = append(unique, id)
+	}
+	ids = unique
+
 	models, err := s.modelRepo.FindByIDs(ids)
 	if err != nil {
 		return nil, err

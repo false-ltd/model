@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS models (
     created_at         DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
     updated_at         DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '记录更新时间',
     UNIQUE KEY uk_model_provider (model_id, provider_id),
+    INDEX idx_models_provider (provider_id),
     INDEX idx_models_family (family),
     INDEX idx_models_cost_input (cost_input),
     INDEX idx_models_context (limit_context),

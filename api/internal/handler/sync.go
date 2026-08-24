@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/false-ltd/model/api/internal/model"
@@ -24,12 +25,17 @@ func NewSyncHandler(syncService *service.SyncService) *SyncHandler {
 // @Security BearerAuth
 // @Success 200 {object} model.Response
 // @Failure 401 {object} model.Response
+// @Failure 409 {object} model.Response
 // @Failure 500 {object} model.Response
 // @Router /api/v1/sync [post]
 func (h *SyncHandler) Trigger(c *gin.Context) {
 	result, err := h.syncService.Trigger()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, model.ErrorResponse(50001, err.Error()))
+		if errors.Is(err, service.ErrSyncInProgress) {
+			c.JSON(http.StatusConflict, model.ErrorResponse(40901, "sync already in progress"))
+			return
+		}
+		internalError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, model.SuccessResponse(result))
@@ -46,7 +52,7 @@ func (h *SyncHandler) Trigger(c *gin.Context) {
 func (h *SyncHandler) Status(c *gin.Context) {
 	status, err := h.syncService.GetStatus()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, model.ErrorResponse(50001, err.Error()))
+		internalError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, model.SuccessResponse(status))
